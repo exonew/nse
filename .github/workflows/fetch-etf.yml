@@ -1,7 +1,9 @@
 name: Build + SEO
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: '30 12 * * 1-5'  # Runs daily at 12:30 PM UTC (6:00 PM IST) exculding Sunday & Saturday
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
   build:
