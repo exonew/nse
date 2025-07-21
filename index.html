@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* CSS Variables: Already well-defined, good job! */
+        /* Optimized CSS with performance improvements */
         :root {
             --primary: #2563eb;
             --primary-dark: #1d4ed8;
@@ -19,13 +19,12 @@
             --light: #f8fafc;
             --card-bg: #ffffff;
             --border: #e2e8f0;
-            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
             --shadow-md: 0 10px 20px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 15px 30px rgba(0, 0, 0, 0.15); /* New larger shadow */
+            --shadow-lg: 0 15px 30px rgba(0, 0, 0, 0.15);
         }
 
-        /* Base styles */
         * {
             margin: 0;
             padding: 0;
@@ -121,9 +120,10 @@
             border-radius: 16px;
             box-shadow: var(--shadow-sm);
             padding: 25px;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
             display: flex;
             flex-direction: column;
+            will-change: transform;
         }
 
         .card:hover {
@@ -185,8 +185,9 @@
             border-radius: 12px;
             padding: 20px;
             text-align: center;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+            will-change: transform;
         }
 
         .stat-card:hover {
@@ -219,7 +220,7 @@
             display: flex;
             gap: 15px;
             align-items: center;
-            flex-wrap: wrap; /* Allow controls to wrap */
+            flex-wrap: wrap;
         }
         .table-controls input,
         .table-controls select {
@@ -279,6 +280,10 @@
             z-index: 2;
         }
 
+        .data-table tbody tr {
+            transition: background-color 0.2s;
+        }
+
         .data-table tbody tr:hover {
             background-color: rgba(37, 99, 235, 0.05);
         }
@@ -309,7 +314,7 @@
             font-size: 0.85em;
             min-width: 100px;
             text-align: center;
-            white-space: nowrap; /* Prevent wrapping */
+            white-space: nowrap;
         }
 
         .signal-dip { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); }
@@ -320,16 +325,16 @@
         .top-dips-section {
             background: var(--card-bg);
             border-radius: 16px;
-            box-shadow: var(--shadow-lg); /* More prominent shadow */
+            box-shadow: var(--shadow-lg);
             padding: 30px;
             margin-top: 30px;
-            border: 2px solid var(--danger); /* Highlight with danger color */
+            border: 2px solid var(--danger);
             text-align: center;
             overflow: hidden;
             position: relative;
         }
         .top-dips-section::before {
-            content: "\f0d7"; /* FontAwesome caret-down icon */
+            content: "\f0d7";
             font-family: 'Font Awesome 6 Free';
             font-weight: 900;
             position: absolute;
@@ -366,7 +371,7 @@
         }
         .top-dips-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* 3-4 columns */
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
             position: relative;
             z-index: 1;
@@ -381,13 +386,14 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            will-change: transform;
         }
         .top-dip-card:hover {
             transform: translateY(-5px) scale(1.02);
             box-shadow: var(--shadow-md);
             border-color: var(--danger);
         }
-        .top-dip-card::after { /* Overlay for effect */
+        .top-dip-card::after {
             content: '';
             position: absolute;
             top: 0;
@@ -456,7 +462,7 @@
             padding: 8px 10px;
             position: absolute;
             z-index: 10;
-            bottom: 125%; /* Position above the text */
+            bottom: 125%;
             left: 50%;
             margin-left: -100px;
             opacity: 0;
@@ -478,7 +484,6 @@
             visibility: visible;
             opacity: 1;
         }
-
 
         /* Loader and Error States */
         .loader, .error-message {
@@ -530,6 +535,13 @@
             transform: translateY(-2px);
         }
 
+        /* Performance enhancements */
+        .card, .stat-card, .top-dip-card {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
         /* Footer */
         footer {
             text-align: center;
@@ -544,14 +556,13 @@
             margin-bottom: 5px;
         }
 
-
         /* Responsive adjustments */
         @media (max-width: 992px) {
             .dashboard-grid, .top-dips-grid {
                 grid-template-columns: 1fr;
             }
             .top-dips-grid {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Maintain more than 1 column if space allows */
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             }
         }
 
@@ -719,7 +730,8 @@
                 <h2><i class="fas fa-arrow-alt-circle-down"></i> Top 10 Dip Opportunities</h2>
                 <p>These ETFs are currently showing strong oversold signals (RSI < 30), potentially indicating attractive entry points. Sorted by lowest RSI.</p>
                 <div class="top-dips-grid" id="top-dips-grid">
-                    </div>
+                    <!-- Top dip cards will be inserted here -->
+                </div>
             </div>
             
             <div class="card" style="margin-top: 30px;">
@@ -798,17 +810,17 @@
         // Constants for RSI thresholds
         const RSI_OVERSOLD = 30;
         const RSI_OVERBOUGHT = 70;
-        const API_BASE_URL = 'data'; // Base path for JSON data (e.g., 'data/2025-07-21.json')
         const TOP_DIP_COUNT = 10; // Number of top dip opportunities to display
+        const MAX_ETF_COUNT = 50; // Maximum number of ETFs to display in chart
+        const DATA_REFRESH_INTERVAL = 300000; // 5 minutes in milliseconds
 
-        // DOM Element References (using a more concise object for clarity)
+        // DOM Element References
         const DOM = {
             loader: document.getElementById('loader'),
             errorMessage: document.getElementById('error-message'),
             errorDetails: document.getElementById('error-details'),
             currentDate: document.getElementById('current-date'),
             dashboardContent: document.getElementById('dashboard-content'),
-            marketOverviewCard: document.getElementById('market-overview-card'),
             dipOpportunities: document.getElementById('dip-opportunities'),
             overboughtEtfs: document.getElementById('overbought-etfs'),
             neutralEtfs: document.getElementById('neutral-etfs'),
@@ -823,9 +835,10 @@
             topDipsGrid: document.getElementById('top-dips-grid')
         };
 
-        let etfChartInstance = null; // To hold the Chart.js instance for updates
-        let allETFData = []; // Store the fetched and processed data globally
-        let displayedETFData = []; // Data currently displayed in the table (after search/filter)
+        let etfChartInstance = null; // Chart.js instance
+        let allETFData = []; // Store the fetched and processed data
+        let displayedETFData = []; // Data currently displayed in the table
+        let dataRefreshTimer = null; // Timer for periodic data refresh
 
         /**
          * Utility Functions
@@ -834,6 +847,7 @@
             const today = new Date();
             return today.toISOString().split('T')[0];
         }
+
         function formatDisplayDate(dateStr) {
             const date = new Date(dateStr);
             return date.toLocaleDateString('en-US', {
@@ -843,6 +857,7 @@
                 day: 'numeric'
             });
         }
+
         function formatCurrency(value) {
             return new Intl.NumberFormat('en-IN', {
                 style: 'currency',
@@ -851,9 +866,11 @@
                 maximumFractionDigits: 2
             }).format(value);
         }
+
         function formatPercentage(value) {
             return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
         }
+
         function calculateRSI() {
             // Bias towards oversold/overbought for demo
             const rand = Math.random();
@@ -894,13 +911,13 @@
         /**
          * Enhanced Dip Selection Logic
          */
-        function getTopDipOpportunities(data, count = 10) {
-            // 1. Filter: RSI < 30, and not in a strong downtrend (e.g., changePercent > -5%)
+        function getTopDipOpportunities(data, count = TOP_DIP_COUNT) {
+            // 1. Filter: RSI < 30, and not in a strong downtrend
             const dipCandidates = data.filter(etf =>
                 etf.rsi < RSI_OVERSOLD &&
                 etf.changePercent > -5 // Avoid ETFs crashing hard today
             );
-            // 2. Sort: By RSI ascending, then by changePercent descending (prefer those rebounding)
+            // 2. Sort: By RSI ascending, then by changePercent descending
             dipCandidates.sort((a, b) => {
                 if (a.rsi !== b.rsi) return a.rsi - b.rsi;
                 return b.changePercent - a.changePercent;
@@ -926,6 +943,7 @@
             }
             return filtered;
         }
+
         function sortETFData(data, key, order) {
             return [...data].sort((a, b) => {
                 let valA = a[key];
@@ -949,11 +967,15 @@
                 DOM.etfTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No ETFs match your criteria.</td></tr>';
                 return;
             }
+            
+            // Use document fragment for batch insertion
             const fragment = document.createDocumentFragment();
+            
             data.forEach(etf => {
                 const row = document.createElement('tr');
                 const changeClass = etf.change >= 0 ? 'positive' : 'negative';
                 const signalClass = `signal-${etf.signal.toLowerCase().replace(' ', '-')}`;
+                
                 row.innerHTML = `
                     <td class="symbol">${etf.symbol}</td>
                     <td>${etf.name}</td>
@@ -962,18 +984,23 @@
                     <td>${etf.rsi.toFixed(2)}</td>
                     <td><span class="${signalClass}">${etf.signal}</span></td>
                 `;
+                
                 fragment.appendChild(row);
             });
+            
             DOM.etfTableBody.appendChild(fragment);
         }
 
         /**
-         * Renders or updates the ETF prices and RSI chart, highlighting top dips.
+         * Renders or updates the ETF prices and RSI chart
          */
         function renderChart(data) {
-            const symbols = data.map(etf => etf.symbol);
-            const prices = data.map(etf => etf.lastPrice);
-            const rsiValues = data.map(etf => etf.rsi);
+            // For performance, only show top MAX_ETF_COUNT ETFs in the chart
+            const chartData = [...data].sort((a, b) => b.rsi - a.rsi).slice(0, MAX_ETF_COUNT);
+            
+            const symbols = chartData.map(etf => etf.symbol);
+            const prices = chartData.map(etf => etf.lastPrice);
+            const rsiValues = chartData.map(etf => etf.rsi);
 
             // Highlight top dips with a border
             const topDipSymbols = new Set(getTopDipOpportunities(data, TOP_DIP_COUNT).map(etf => etf.symbol));
@@ -989,7 +1016,7 @@
             );
             const borderWidths = symbols.map(sym => topDipSymbols.has(sym) ? 4 : 1);
 
-            const chartData = {
+            const chartConfig = {
                 labels: symbols,
                 datasets: [{
                     label: 'Last Price (₹)',
@@ -1010,7 +1037,7 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                const etf = data[context.dataIndex];
+                                const etf = chartData[context.dataIndex];
                                 return [
                                     `ETF: ${etf.name}`,
                                     `Price: ${formatCurrency(etf.lastPrice)}`,
@@ -1034,18 +1061,22 @@
                         title: {
                             display: true,
                             text: 'Price (₹)',
-                            color: var_from_css('--secondary')
+                            color: getCSSVariable('--secondary')
                         },
                         ticks: {
                             callback: function(value) {
                                 return formatCurrency(value);
                             },
-                            color: var_from_css('--dark')
+                            color: getCSSVariable('--dark')
                         }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: var_from_css('--dark') }
+                        ticks: { 
+                            color: getCSSVariable('--dark'),
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
                     }
                 },
                 animation: {
@@ -1055,20 +1086,20 @@
             };
 
             if (etfChartInstance) {
-                etfChartInstance.data = chartData;
+                etfChartInstance.data = chartConfig;
                 etfChartInstance.options = chartOptions;
                 etfChartInstance.update();
             } else {
                 etfChartInstance = new Chart(DOM.etfChartCanvas.getContext('2d'), {
                     type: 'bar',
-                    data: chartData,
+                    data: chartConfig,
                     options: chartOptions
                 });
             }
         }
 
         /**
-         * Updates the numerical statistics cards.
+         * Updates the numerical statistics cards
          */
         function updateStats(data) {
             const dipCount = data.filter(etf => etf.signal === 'Dip Opportunity').length;
@@ -1082,7 +1113,7 @@
         }
 
         /**
-         * Renders the top 10 dip opportunities section with enhanced info.
+         * Renders the top 10 dip opportunities section
          */
         function renderTopDipOpportunities(data) {
             const topDips = getTopDipOpportunities(data, TOP_DIP_COUNT);
@@ -1121,24 +1152,9 @@
         }
 
         /**
-         * Main Data Fetching and Dashboard Update Logic
+         * Data Fetching and Simulation
          */
-        async function fetchETFData() {
-            const today = getFormattedDate();
-            await new Promise(resolve => setTimeout(resolve, 1200));
-            try {
-                const response = await fetch(`${API_BASE_URL}/${today}.json`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                return data.data;
-            } catch (fileError) {
-                console.warn(`Could not load local file ${API_BASE_URL}/${today}.json. Simulating data.`, fileError);
-                return generateSimulatedData(30);
-            }
-        }
-        function generateSimulatedData(count = 25) {
+        function generateSimulatedData(count = 50) {
             const etfNames = [
                 'Tech Innovators ETF', 'Global Healthcare ETF', 'Emerging Markets ETF',
                 'Sustainable Energy ETF', 'Financial Titans ETF', 'Consumer Staples ETF',
@@ -1149,8 +1165,16 @@
                 'Digital Transformation Fund', 'Biotechnology Innovators', 'E-commerce Giants',
                 'Semiconductor Index Fund', 'Precious Metals & Mining', 'Indian Consumption Fund',
                 'Infrastructure Development ETF', 'Electric Vehicle Ecosystem', 'Gaming & Esports',
-                'Space Exploration ETF', 'Agri-Tech Solutions', 'Smart City Development'
+                'Space Exploration ETF', 'Agri-Tech Solutions', 'Smart City Development',
+                'Global Dividend Leaders', 'Renewable Energy ETF', 'Healthcare Innovation',
+                'Fintech Disruptors', 'Metaverse Index Fund', 'Quantum Computing ETF',
+                'Blockchain Innovators', 'Nanotechnology ETF', 'Genomics Revolution',
+                'Cybersecurity & Privacy', 'Future Mobility ETF', 'Global Water Solutions',
+                'Sustainable Agriculture', 'Climate Change Solutions', 'Clean Water Technology',
+                'Waste Management ETF', 'Carbon Reduction Fund', 'Ocean Sustainability',
+                'Smart Grid Technology', 'Advanced Materials ETF', '3D Printing Revolution'
             ];
+            
             return Array.from({ length: count }, (_, i) => {
                 const basePrice = parseFloat((Math.random() * 200 + 50).toFixed(2));
                 const change = parseFloat((Math.random() * 15 - 7.5).toFixed(2));
@@ -1166,38 +1190,91 @@
                 };
             });
         }
+
+        /**
+         * Applies current filters and sorting to the table
+         */
         function applyTableFiltersAndSort() {
             const searchQuery = DOM.searchEtfInput.value.trim();
             const signalFilter = DOM.filterSignalSelect.value;
             const sortBy = DOM.sortBySelect.value;
             const sortOrder = DOM.sortOrderSelect.value;
+            
             let filteredData = filterETFData(allETFData, searchQuery, signalFilter);
             displayedETFData = sortETFData(filteredData, sortBy, sortOrder);
             renderTable(displayedETFData);
         }
+
+        /**
+         * Main Dashboard Initialization
+         */
         async function initDashboard() {
             DOM.loader.style.display = 'flex';
             DOM.dashboardContent.style.display = 'none';
             DOM.topDipsSection.style.display = 'none';
             DOM.errorMessage.style.display = 'none';
+            
             try {
                 DOM.currentDate.textContent = formatDisplayDate(getFormattedDate());
-                const rawEtfs = await fetchETFData();
+                
+                // Simulate API delay
+                await new Promise(resolve => setTimeout(resolve, 1200));
+                
+                // Generate simulated data
+                const rawEtfs = generateSimulatedData(50);
+                
+                // Process and store data
                 allETFData = processETFData(rawEtfs);
+                
+                // Update dashboard components
                 updateStats(allETFData);
                 renderTopDipOpportunities(allETFData);
                 renderChart(allETFData);
                 applyTableFiltersAndSort();
+                
+                // Show dashboard content
                 DOM.dashboardContent.style.display = 'grid';
                 DOM.loader.style.display = 'none';
+                
+                // Set up periodic refresh
+                if (dataRefreshTimer) clearInterval(dataRefreshTimer);
+                dataRefreshTimer = setInterval(refreshData, DATA_REFRESH_INTERVAL);
             } catch (error) {
                 console.error('Failed to initialize dashboard:', error);
                 DOM.loader.style.display = 'none';
-                DOM.dashboardContent.style.display = 'none';
-                DOM.topDipsSection.style.display = 'none';
                 DOM.errorMessage.style.display = 'flex';
                 DOM.errorDetails.textContent = `Error: ${error.message || 'An unknown error occurred while loading data.'}`;
             }
+        }
+
+        /**
+         * Refresh data periodically
+         */
+        function refreshData() {
+            console.log("Refreshing ETF data...");
+            
+            // Update date display
+            DOM.currentDate.textContent = formatDisplayDate(getFormattedDate());
+            
+            // Generate new simulated data
+            const rawEtfs = generateSimulatedData(50);
+            const newData = processETFData(rawEtfs);
+            
+            // Only update if data has changed significantly
+            if (JSON.stringify(newData) !== JSON.stringify(allETFData)) {
+                allETFData = newData;
+                updateStats(allETFData);
+                renderTopDipOpportunities(allETFData);
+                renderChart(allETFData);
+                applyTableFiltersAndSort();
+            }
+        }
+
+        /**
+         * Helper to get CSS variable values in JS
+         */
+        function getCSSVariable(varName) {
+            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         }
 
         /**
@@ -1205,329 +1282,24 @@
          */
         document.addEventListener('DOMContentLoaded', () => {
             initDashboard();
-            DOM.searchEtfInput.addEventListener('input', applyTableFiltersAndSort);
+            
+            // Debounce search input to avoid excessive re-renders
+            let searchTimeout;
+            DOM.searchEtfInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(applyTableFiltersAndSort, 300);
+            });
+            
             DOM.filterSignalSelect.addEventListener('change', applyTableFiltersAndSort);
             DOM.sortBySelect.addEventListener('change', applyTableFiltersAndSort);
             DOM.sortOrderSelect.addEventListener('change', applyTableFiltersAndSort);
         });
 
-        /**
-         * Helper to get CSS variable values in JS
-         */
-        function var_from_css(varName) {
-            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-        }
-
-        /**
-         * Filtering and Sorting Functions
-         */
-        function filterETFData(data, searchQuery, signalFilter) {
-            let filtered = data;
-            if (searchQuery) {
-                const lowerCaseQuery = searchQuery.toLowerCase();
-                filtered = filtered.filter(etf =>
-                    etf.symbol.toLowerCase().includes(lowerCaseQuery) ||
-                    etf.name.toLowerCase().includes(lowerCaseQuery)
-                );
-            }
-            if (signalFilter !== 'all') {
-                filtered = filtered.filter(etf => etf.signal === signalFilter);
-            }
-            return filtered;
-        }
-        function sortETFData(data, key, order) {
-            return [...data].sort((a, b) => {
-                let valA = a[key];
-                let valB = b[key];
-                if (typeof valA === 'string') {
-                    valA = valA.toLowerCase();
-                    valB = valB.toLowerCase();
-                }
-                if (valA < valB) return order === 'asc' ? -1 : 1;
-                if (valA > valB) return order === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
-
-        /**
-         * Rendering Functions
-         */
-        function renderTable(data) {
-            DOM.etfTableBody.innerHTML = '';
-            if (data.length === 0) {
-                DOM.etfTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No ETFs match your criteria.</td></tr>';
-                return;
-            }
-            const fragment = document.createDocumentFragment();
-            data.forEach(etf => {
-                const row = document.createElement('tr');
-                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
-                const signalClass = `signal-${etf.signal.toLowerCase().replace(' ', '-')}`;
-                row.innerHTML = `
-                    <td class="symbol">${etf.symbol}</td>
-                    <td>${etf.name}</td>
-                    <td>${formatCurrency(etf.lastPrice)}</td>
-                    <td class="${changeClass}">${formatPercentage(etf.changePercent)}</td>
-                    <td>${etf.rsi.toFixed(2)}</td>
-                    <td><span class="${signalClass}">${etf.signal}</span></td>
-                `;
-                fragment.appendChild(row);
-            });
-            DOM.etfTableBody.appendChild(fragment);
-        }
-
-        /**
-         * Renders or updates the ETF prices and RSI chart, highlighting top dips.
-         */
-        function renderChart(data) {
-            const symbols = data.map(etf => etf.symbol);
-            const prices = data.map(etf => etf.lastPrice);
-            const rsiValues = data.map(etf => etf.rsi);
-
-            // Highlight top dips with a border
-            const topDipSymbols = new Set(getTopDipOpportunities(data, TOP_DIP_COUNT).map(etf => etf.symbol));
-
-            const backgroundColors = rsiValues.map((rsi, i) => {
-                if (rsi < RSI_OVERSOLD) return 'rgba(239, 68, 68, 0.7)';
-                if (rsi > RSI_OVERBOUGHT) return 'rgba(245, 158, 11, 0.7)';
-                return 'rgba(16, 185, 129, 0.7)';
-            });
-
-            const borderColors = symbols.map((sym, i) =>
-                topDipSymbols.has(sym) ? 'rgba(37, 99, 235, 1)' : backgroundColors[i].replace('0.7', '1')
-            );
-            const borderWidths = symbols.map(sym => topDipSymbols.has(sym) ? 4 : 1);
-
-            const chartData = {
-                labels: symbols,
-                datasets: [{
-                    label: 'Last Price (₹)',
-                    data: prices,
-                    backgroundColor: backgroundColors,
-                    borderColor: borderColors,
-                    borderWidth: borderWidths,
-                    borderRadius: 6,
-                    hoverBackgroundColor: backgroundColors.map(color => color.replace('0.7', '0.9'))
-                }]
-            };
-
-            const chartOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const etf = data[context.dataIndex];
-                                return [
-                                    `ETF: ${etf.name}`,
-                                    `Price: ${formatCurrency(etf.lastPrice)}`,
-                                    `Change: ${formatPercentage(etf.changePercent)}`,
-                                    `RSI: ${etf.rsi.toFixed(2)}`,
-                                    `Signal: ${etf.signal}`
-                                ];
-                            }
-                        },
-                        titleFont: { size: 14, weight: 'bold' },
-                        bodyFont: { size: 12 },
-                        padding: 10,
-                        boxPadding: 4,
-                        displayColors: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
-                        title: {
-                            display: true,
-                            text: 'Price (₹)',
-                            color: var_from_css('--secondary')
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return formatCurrency(value);
-                            },
-                            color: var_from_css('--dark')
-                        }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: var_from_css('--dark') }
-                    }
-                },
-                animation: {
-                    duration: 1000,
-                    easing: 'easeOutQuart'
-                }
-            };
-
-            if (etfChartInstance) {
-                etfChartInstance.data = chartData;
-                etfChartInstance.options = chartOptions;
-                etfChartInstance.update();
-            } else {
-                etfChartInstance = new Chart(DOM.etfChartCanvas.getContext('2d'), {
-                    type: 'bar',
-                    data: chartData,
-                    options: chartOptions
-                });
-            }
-        }
-
-        /**
-         * Updates the numerical statistics cards.
-         */
-        function updateStats(data) {
-            const dipCount = data.filter(etf => etf.signal === 'Dip Opportunity').length;
-            const overboughtCount = data.filter(etf => etf.signal === 'Overbought').length;
-            const neutralCount = data.filter(etf => etf.signal === 'Neutral').length;
-
-            DOM.totalEtfs.textContent = data.length;
-            DOM.dipOpportunities.textContent = dipCount;
-            DOM.overboughtEtfs.textContent = overboughtCount;
-            DOM.neutralEtfs.textContent = neutralCount;
-        }
-
-        /**
-         * Renders the top 10 dip opportunities section with enhanced info.
-         */
-        function renderTopDipOpportunities(data) {
-            const topDips = getTopDipOpportunities(data, TOP_DIP_COUNT);
-
-            DOM.topDipsGrid.innerHTML = '';
-            if (topDips.length === 0) {
-                DOM.topDipsSection.style.display = 'none';
-                return;
-            }
-            DOM.topDipsSection.style.display = 'block';
-
-            const fragment = document.createDocumentFragment();
-            topDips.forEach((etf, index) => {
-                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
-                // Buy Signal Strength: Strong if RSI < 20, Good if 20-25, Moderate if 25-30
-                let strength = 'Moderate';
-                if (etf.rsi < 20) strength = 'Strong';
-                else if (etf.rsi < 25) strength = 'Good';
-                else strength = 'Moderate';
-
-                const card = document.createElement('div');
-                card.classList.add('top-dip-card');
-                card.innerHTML = `
-                    <div class="recommendation-badge" title="Buy Signal Strength: ${strength}">
-                        <i class="fas fa-star${strength === 'Strong' ? '' : '-half-alt'}"></i> Top ${index + 1}
-                    </div>
-                    <h3>${etf.symbol}</h3>
-                    <p class="top-dip-name">${etf.name}</p>
-                    <div class="top-dip-price">${formatCurrency(etf.lastPrice)}</div>
-                    <div class="top-dip-change ${changeClass}">${formatPercentage(etf.changePercent)}</div>
-                    <div class="top-dip-rsi">RSI: ${etf.rsi.toFixed(2)} <span style="font-size:0.9em;color:var(--success);">(${strength})</span></div>
-                `;
-                fragment.appendChild(card);
-            });
-            DOM.topDipsGrid.appendChild(fragment);
-        }
-
-        /**
-         * Main Data Fetching and Dashboard Update Logic
-         */
-        async function fetchETFData() {
-            const today = getFormattedDate();
-            await new Promise(resolve => setTimeout(resolve, 1200));
-            try {
-                const response = await fetch(`${API_BASE_URL}/${today}.json`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                return data.data;
-            } catch (fileError) {
-                console.warn(`Could not load local file ${API_BASE_URL}/${today}.json. Simulating data.`, fileError);
-                return generateSimulatedData(30);
-            }
-        }
-        function generateSimulatedData(count = 25) {
-            const etfNames = [
-                'Tech Innovators ETF', 'Global Healthcare ETF', 'Emerging Markets ETF',
-                'Sustainable Energy ETF', 'Financial Titans ETF', 'Consumer Staples ETF',
-                'Real Estate Opportunities', 'Small Cap Growth', 'Bond Market Blend',
-                'Gold & Precious Metals', 'Cybersecurity Leaders', 'Robotics & AI',
-                'Water Infrastructure', 'Clean Transportation', 'Cloud Computing',
-                'AI & Machine Learning ETF', 'Green Energy Futures', 'Global Robotics & Automation',
-                'Digital Transformation Fund', 'Biotechnology Innovators', 'E-commerce Giants',
-                'Semiconductor Index Fund', 'Precious Metals & Mining', 'Indian Consumption Fund',
-                'Infrastructure Development ETF', 'Electric Vehicle Ecosystem', 'Gaming & Esports',
-                'Space Exploration ETF', 'Agri-Tech Solutions', 'Smart City Development'
-            ];
-            return Array.from({ length: count }, (_, i) => {
-                const basePrice = parseFloat((Math.random() * 200 + 50).toFixed(2));
-                const change = parseFloat((Math.random() * 15 - 7.5).toFixed(2));
-                const changePercent = parseFloat(((change / basePrice) * 100).toFixed(2));
-                return {
-                    "symbol": `ETF${100 + i}`,
-                    "ltP": parseFloat((basePrice + change).toFixed(2)),
-                    "chn": change,
-                    "per": changePercent,
-                    "meta": {
-                        "companyName": etfNames[i % etfNames.length]
-                    }
-                };
-            });
-        }
-        function applyTableFiltersAndSort() {
-            const searchQuery = DOM.searchEtfInput.value.trim();
-            const signalFilter = DOM.filterSignalSelect.value;
-            const sortBy = DOM.sortBySelect.value;
-            const sortOrder = DOM.sortOrderSelect.value;
-            let filteredData = filterETFData(allETFData, searchQuery, signalFilter);
-            displayedETFData = sortETFData(filteredData, sortBy, sortOrder);
-            renderTable(displayedETFData);
-        }
-        async function initDashboard() {
-            DOM.loader.style.display = 'flex';
-            DOM.dashboardContent.style.display = 'none';
-            DOM.topDipsSection.style.display = 'none';
-            DOM.errorMessage.style.display = 'none';
-            try {
-                DOM.currentDate.textContent = formatDisplayDate(getFormattedDate());
-                const rawEtfs = await fetchETFData();
-                allETFData = processETFData(rawEtfs);
-                updateStats(allETFData);
-                renderTopDipOpportunities(allETFData);
-                renderChart(allETFData);
-                applyTableFiltersAndSort();
-                DOM.dashboardContent.style.display = 'grid';
-                DOM.loader.style.display = 'none';
-            } catch (error) {
-                console.error('Failed to initialize dashboard:', error);
-                DOM.loader.style.display = 'none';
-                DOM.dashboardContent.style.display = 'none';
-                DOM.topDipsSection.style.display = 'none';
-                DOM.errorMessage.style.display = 'flex';
-                DOM.errorDetails.textContent = `Error: ${error.message || 'An unknown error occurred while loading data.'}`;
-            }
-        }
-
-        /**
-         * Event Listeners
-         */
-        document.addEventListener('DOMContentLoaded', () => {
-            initDashboard();
-            DOM.searchEtfInput.addEventListener('input', applyTableFiltersAndSort);
-            DOM.filterSignalSelect.addEventListener('change', applyTableFiltersAndSort);
-            DOM.sortBySelect.addEventListener('change', applyTableFiltersAndSort);
-            DOM.sortOrderSelect.addEventListener('change', applyTableFiltersAndSort);
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (dataRefreshTimer) clearInterval(dataRefreshTimer);
+            if (etfChartInstance) etfChartInstance.destroy();
         });
-
-        /**
-         * Helper to get CSS variable values in JS
-         */
-        function var_from_css(varName) {
-            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-        }
     </script>
 </body>
 </html>
-
-       
