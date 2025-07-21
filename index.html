@@ -1220,3 +1220,455 @@
     </script>
 </body>
 </html>
+
+        /**
+         * Filtering and Sorting Functions
+         */
+        function filterETFData(data, searchQuery, signalFilter) {
+            let filtered = data;
+            if (searchQuery) {
+                const lowerCaseQuery = searchQuery.toLowerCase();
+                filtered = filtered.filter(etf =>
+                    etf.symbol.toLowerCase().includes(lowerCaseQuery) ||
+                    etf.name.toLowerCase().includes(lowerCaseQuery)
+                );
+            }
+            if (signalFilter !== 'all') {
+                filtered = filtered.filter(etf => etf.signal === signalFilter);
+            }
+            return filtered;
+        }
+        function sortETFData(data, key, order) {
+            return [...data].sort((a, b) => {
+                let valA = a[key];
+                let valB = b[key];
+                if (typeof valA === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+                if (valA < valB) return order === 'asc' ? -1 : 1;
+                if (valA > valB) return order === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        /**
+         * Rendering Functions
+         */
+        function renderTable(data) {
+            DOM.etfTableBody.innerHTML = '';
+            if (data.length === 0) {
+                DOM.etfTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No ETFs match your criteria.</td></tr>';
+                return;
+            }
+            const fragment = document.createDocumentFragment();
+            data.forEach(etf => {
+                const row = document.createElement('tr');
+                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
+                const signalClass = `signal-${etf.signal.toLowerCase().replace(' ', '-')}`;
+                row.innerHTML = `
+                    <td class="symbol">${etf.symbol}</td>
+                    <td>${etf.name}</td>
+                    <td>${formatCurrency(etf.lastPrice)}</td>
+                    <td class="${changeClass}">${formatPercentage(etf.changePercent)}</td>
+                    <td>${etf.rsi.toFixed(2)}</td>
+                    <td><span class="${signalClass}">${etf.signal}</span></td>
+                `;
+                fragment.appendChild(row);
+            });
+            DOM.etfTableBody.appendChild(fragment);
+        }
+
+        /**
+         * Renders or updates the ETF prices and RSI chart, highlighting top dips.
+         */
+        function renderChart(data) {
+            const symbols = data.map(etf => etf.symbol);
+            const prices = data.map(etf => etf.lastPrice);
+            const rsiValues = data.map(etf => etf.rsi);
+
+            // Highlight top dips with a border
+            const topDipSymbols = new Set(getTopDipOpportunities(data, TOP_DIP_COUNT).map(etf => etf.symbol));
+
+            const backgroundColors = rsiValues.map((rsi, i) => {
+                if (rsi < RSI_OVERSOLD) return 'rgba(239, 68, 68, 0.7)';
+                if (rsi > RSI_OVERBOUGHT) return 'rgba(245, 158, 11, 0.7)';
+                return 'rgba(16, 185, 129, 0.7)';
+            });
+
+            const borderColors = symbols.map((sym, i) =>
+                topDipSymbols.has(sym) ? 'rgba(37, 99, 235, 1)' : backgroundColors[i].replace('0.7', '1')
+            );
+            const borderWidths = symbols.map(sym => topDipSymbols.has(sym) ? 4 : 1);
+
+            const chartData = {
+                labels: symbols,
+                datasets: [{
+                    label: 'Last Price (₹)',
+                    data: prices,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: borderWidths,
+                    borderRadius: 6,
+                    hoverBackgroundColor: backgroundColors.map(color => color.replace('0.7', '0.9'))
+                }]
+            };
+
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const etf = data[context.dataIndex];
+                                return [
+                                    `ETF: ${etf.name}`,
+                                    `Price: ${formatCurrency(etf.lastPrice)}`,
+                                    `Change: ${formatPercentage(etf.changePercent)}`,
+                                    `RSI: ${etf.rsi.toFixed(2)}`,
+                                    `Signal: ${etf.signal}`
+                                ];
+                            }
+                        },
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 12 },
+                        padding: 10,
+                        boxPadding: 4,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        title: {
+                            display: true,
+                            text: 'Price (₹)',
+                            color: var_from_css('--secondary')
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            },
+                            color: var_from_css('--dark')
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: var_from_css('--dark') }
+                    }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                }
+            };
+
+            if (etfChartInstance) {
+                etfChartInstance.data = chartData;
+                etfChartInstance.options = chartOptions;
+                etfChartInstance.update();
+            } else {
+                etfChartInstance = new Chart(DOM.etfChartCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: chartData,
+                    options: chartOptions
+                });
+            }
+        }
+
+        /**
+         * Updates the numerical statistics cards.
+         */
+        function updateStats(data) {
+            const dipCount = data.filter(etf => etf.signal === 'Dip Opportunity').length;
+            const overboughtCount = data.filter(etf => etf.signal === 'Overbought').length;
+            const neutralCount = data.filter(etf => etf.signal === 'Neutral').length;
+
+            DOM.totalEtfs.textContent = data.length;
+            DOM.dipOpportunities.textContent = dipCount;
+            DOM.overboughtEtfs.textContent = overboughtCount;
+            DOM.neutralEtfs.textContent = neutralCount;
+        }
+
+        /**
+         * Renders the top 10 dip opportunities section with enhanced info.
+         */
+        function renderTopDipOpportunities(data) {
+            const topDips = getTopDipOpportunities(data, TOP_DIP_COUNT);
+
+            DOM.topDipsGrid.innerHTML = '';
+            if (topDips.length === 0) {
+                DOM.topDipsSection.style.display = 'none';
+                return;
+            }
+            DOM.topDipsSection.style.display = 'block';
+
+            const fragment = document.createDocumentFragment();
+            topDips.forEach((etf, index) => {
+                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
+                // Buy Signal Strength: Strong if RSI < 20, Good if 20-25, Moderate if 25-30
+                let strength = 'Moderate';
+                if (etf.rsi < 20) strength = 'Strong';
+                else if (etf.rsi < 25) strength = 'Good';
+                else strength = 'Moderate';
+
+                const card = document.createElement('div');
+                card.classList.add('top-dip-card');
+                card.innerHTML = `
+                    <div class="recommendation-badge" title="Buy Signal Strength: ${strength}">
+                        <i class="fas fa-star${strength === 'Strong' ? '' : '-half-alt'}"></i> Top ${index + 1}
+                    </div>
+                    <h3>${etf.symbol}</h3>
+                    <p class="top-dip-name">${etf.name}</p>
+                    <div class="top-dip-price">${formatCurrency(etf.lastPrice)}</div>
+                    <div class="top-dip-change ${changeClass}">${formatPercentage(etf.changePercent)}</div>
+                    <div class="top-dip-rsi">RSI: ${etf.rsi.toFixed(2)} <span style="font-size:0.9em;color:var(--success);">(${strength})</span></div>
+                `;
+                fragment.appendChild(card);
+            });
+            DOM.topDipsGrid.appendChild(fragment);
+        }
+
+        /**
+         * Main Data Fetching and Dashboard Update Logic
+         */
+        async function fetchETFData() {
+            const today = getFormattedDate();
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            try {
+                const response = await fetch(`${API_BASE_URL}/${today}.json`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data.data;
+            } catch (fileError) {
+                console.warn(`Could not load local file ${API_BASE_URL}/${today}.json. Simulating data.`, fileError);
+                return generateSimulatedData(30);
+            }
+        }
+        function generateSimulatedData(count = 25) {
+            const etfNames = [
+                'Tech Innovators ETF', 'Global Healthcare ETF', 'Emerging Markets ETF',
+                'Sustainable Energy ETF', 'Financial Titans ETF', 'Consumer Staples ETF',
+                'Real Estate Opportunities', 'Small Cap Growth', 'Bond Market Blend',
+                'Gold & Precious Metals', 'Cybersecurity Leaders', 'Robotics & AI',
+                'Water Infrastructure', 'Clean Transportation', 'Cloud Computing',
+                'AI & Machine Learning ETF', 'Green Energy Futures', 'Global Robotics & Automation',
+                'Digital Transformation Fund', 'Biotechnology Innovators', 'E-commerce Giants',
+                'Semiconductor Index Fund', 'Precious Metals & Mining', 'Indian Consumption Fund',
+                'Infrastructure Development ETF', 'Electric Vehicle Ecosystem', 'Gaming & Esports',
+                'Space Exploration ETF', 'Agri-Tech Solutions', 'Smart City Development'
+            ];
+            return Array.from({ length: count }, (_, i) => {
+                const basePrice = parseFloat((Math.random() * 200 + 50).toFixed(2));
+                const change = parseFloat((Math.random() * 15 - 7.5).toFixed(2));
+                const changePercent = parseFloat(((change / basePrice) * 100).toFixed(2));
+                return {
+                    "symbol": `ETF${100 + i}`,
+                    "ltP": parseFloat((basePrice + change).toFixed(2)),
+                    "chn": change,
+                    "per": changePercent,
+                    "meta": {
+                        "companyName": etfNames[i % etfNames.length]
+                    }
+                };
+            });
+        }
+        function applyTableFiltersAndSort() {
+            const searchQuery = DOM.searchEtfInput.value.trim();
+            const signalFilter = DOM.filterSignalSelect.value;
+            const sortBy = DOM.sortBySelect.value;
+            const sortOrder = DOM.sortOrderSelect.value;
+            let filteredData = filterETFData(allETFData, searchQuery, signalFilter);
+            displayedETFData = sortETFData(filteredData, sortBy, sortOrder);
+            renderTable(displayedETFData);
+        }
+        async function initDashboard() {
+            DOM.loader.style.display = 'flex';
+            DOM.dashboardContent.style.display = 'none';
+            DOM.topDipsSection.style.display = 'none';
+            DOM.errorMessage.style.display = 'none';
+            try {
+                DOM.currentDate.textContent = formatDisplayDate(getFormattedDate());
+                const rawEtfs = await fetchETFData();
+                allETFData = processETFData(rawEtfs);
+                updateStats(allETFData);
+                renderTopDipOpportunities(allETFData);
+                renderChart(allETFData);
+                applyTableFiltersAndSort();
+                DOM.dashboardContent.style.display = 'grid';
+                DOM.loader.style.display = 'none';
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                DOM.loader.style.display = 'none';
+                DOM.dashboardContent.style.display = 'none';
+                DOM.topDipsSection.style.display = 'none';
+                DOM.errorMessage.style.display = 'flex';
+                DOM.errorDetails.textContent = `Error: ${error.message || 'An unknown error occurred while loading data.'}`;
+            }
+        }
+
+        /**
+         * Event Listeners
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            initDashboard();
+            DOM.searchEtfInput.addEventListener('input', applyTableFiltersAndSort);
+            DOM.filterSignalSelect.addEventListener('change', applyTableFiltersAndSort);
+            DOM.sortBySelect.addEventListener('change', applyTableFiltersAndSort);
+            DOM.sortOrderSelect.addEventListener('change', applyTableFiltersAndSort);
+        });
+
+        /**
+         * Helper to get CSS variable values in JS
+         */
+        function var_from_css(varName) {
+            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        }
+    </script>
+</body>
+</html>
+
+        /**
+         * Renders the top 10 dip opportunities section with enhanced info.
+         */
+        function renderTopDipOpportunities(data) {
+            const topDips = getTopDipOpportunities(data, TOP_DIP_COUNT);
+
+            DOM.topDipsGrid.innerHTML = '';
+            if (topDips.length === 0) {
+                DOM.topDipsSection.style.display = 'none';
+                return;
+            }
+            DOM.topDipsSection.style.display = 'block';
+
+            const fragment = document.createDocumentFragment();
+            topDips.forEach((etf, index) => {
+                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
+                // Buy Signal Strength: Strong if RSI < 20, Good if 20-25, Moderate if 25-30
+                let strength = 'Moderate';
+                if (etf.rsi < 20) strength = 'Strong';
+                else if (etf.rsi < 25) strength = 'Good';
+                else strength = 'Moderate';
+
+                const card = document.createElement('div');
+                card.classList.add('top-dip-card');
+                card.innerHTML = `
+                    <div class="recommendation-badge" title="Buy Signal Strength: ${strength}">
+                        <i class="fas fa-star${strength === 'Strong' ? '' : '-half-alt'}"></i> Top ${index + 1}
+                    </div>
+                    <h3>${etf.symbol}</h3>
+                    <p class="top-dip-name">${etf.name}</p>
+                    <div class="top-dip-price">${formatCurrency(etf.lastPrice)}</div>
+                    <div class="top-dip-change ${changeClass}">${formatPercentage(etf.changePercent)}</div>
+                    <div class="top-dip-rsi">RSI: ${etf.rsi.toFixed(2)} <span style="font-size:0.9em;color:var(--success);">(${strength})</span></div>
+                `;
+                fragment.appendChild(card);
+            });
+            DOM.topDipsGrid.appendChild(fragment);
+        }
+
+        /**
+         * Main Data Fetching and Dashboard Update Logic
+         */
+        async function fetchETFData() {
+            const today = getFormattedDate();
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            try {
+                const response = await fetch(`${API_BASE_URL}/${today}.json`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data.data;
+            } catch (fileError) {
+                console.warn(`Could not load local file ${API_BASE_URL}/${today}.json. Simulating data.`, fileError);
+                return generateSimulatedData(30);
+            }
+        }
+        function generateSimulatedData(count = 25) {
+            const etfNames = [
+                'Tech Innovators ETF', 'Global Healthcare ETF', 'Emerging Markets ETF',
+                'Sustainable Energy ETF', 'Financial Titans ETF', 'Consumer Staples ETF',
+                'Real Estate Opportunities', 'Small Cap Growth', 'Bond Market Blend',
+                'Gold & Precious Metals', 'Cybersecurity Leaders', 'Robotics & AI',
+                'Water Infrastructure', 'Clean Transportation', 'Cloud Computing',
+                'AI & Machine Learning ETF', 'Green Energy Futures', 'Global Robotics & Automation',
+                'Digital Transformation Fund', 'Biotechnology Innovators', 'E-commerce Giants',
+                'Semiconductor Index Fund', 'Precious Metals & Mining', 'Indian Consumption Fund',
+                'Infrastructure Development ETF', 'Electric Vehicle Ecosystem', 'Gaming & Esports',
+                'Space Exploration ETF', 'Agri-Tech Solutions', 'Smart City Development'
+            ];
+            return Array.from({ length: count }, (_, i) => {
+                const basePrice = parseFloat((Math.random() * 200 + 50).toFixed(2));
+                const change = parseFloat((Math.random() * 15 - 7.5).toFixed(2));
+                const changePercent = parseFloat(((change / basePrice) * 100).toFixed(2));
+                return {
+                    "symbol": `ETF${100 + i}`,
+                    "ltP": parseFloat((basePrice + change).toFixed(2)),
+                    "chn": change,
+                    "per": changePercent,
+                    "meta": {
+                        "companyName": etfNames[i % etfNames.length]
+                    }
+                };
+            });
+        }
+        function applyTableFiltersAndSort() {
+            const searchQuery = DOM.searchEtfInput.value.trim();
+            const signalFilter = DOM.filterSignalSelect.value;
+            const sortBy = DOM.sortBySelect.value;
+            const sortOrder = DOM.sortOrderSelect.value;
+            let filteredData = filterETFData(allETFData, searchQuery, signalFilter);
+            displayedETFData = sortETFData(filteredData, sortBy, sortOrder);
+            renderTable(displayedETFData);
+        }
+        async function initDashboard() {
+            DOM.loader.style.display = 'flex';
+            DOM.dashboardContent.style.display = 'none';
+            DOM.topDipsSection.style.display = 'none';
+            DOM.errorMessage.style.display = 'none';
+            try {
+                DOM.currentDate.textContent = formatDisplayDate(getFormattedDate());
+                const rawEtfs = await fetchETFData();
+                allETFData = processETFData(rawEtfs);
+                updateStats(allETFData);
+                renderTopDipOpportunities(allETFData);
+                renderChart(allETFData);
+                applyTableFiltersAndSort();
+                DOM.dashboardContent.style.display = 'grid';
+                DOM.loader.style.display = 'none';
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                DOM.loader.style.display = 'none';
+                DOM.dashboardContent.style.display = 'none';
+                DOM.topDipsSection.style.display = 'none';
+                DOM.errorMessage.style.display = 'flex';
+                DOM.errorDetails.textContent = `Error: ${error.message || 'An unknown error occurred while loading data.'}`;
+            }
+        }
+
+        /**
+         * Event Listeners
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            initDashboard();
+            DOM.searchEtfInput.addEventListener('input', applyTableFiltersAndSort);
+            DOM.filterSignalSelect.addEventListener('change', applyTableFiltersAndSort);
+            DOM.sortBySelect.addEventListener('change', applyTableFiltersAndSort);
+            DOM.sortOrderSelect.addEventListener('change', applyTableFiltersAndSort);
+        });
+
+        /**
+         * Helper to get CSS variable values in JS
+         */
+        function var_from_css(varName) {
+            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        }
+    </script>
+</body>
+</html>
