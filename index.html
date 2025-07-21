@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF Market Dashboard & Dip Analyzer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS Variables: Already well-defined, good job! */
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e293b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 20px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 15px 30px rgba(0, 0, 0, 0.15); /* New larger shadow */
+        }
+
+        /* Base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f0f4f8, #e2e8f0);
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        /* Header styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            border-radius: 16px;
+            padding: 20px 30px;
+            box-shadow: var(--shadow-md);
+            color: white;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            z-index: 0;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+        }
+
+        .date-display {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        /* General card styles */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow-sm);
+            padding: 25px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .card-header h2 {
+            font-size: 1.4rem;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Legend styles */
+        .legend span {
+            padding: 4px 12px;
+            border-radius: 4px;
+            margin-left: 8px;
+            font-size: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend .legend-oversold { background-color: rgba(239, 68, 68, 0.3); color: var(--danger); }
+        .legend .legend-neutral { background-color: rgba(16, 185, 129, 0.3); color: var(--success); }
+        .legend .legend-overbought { background-color: rgba(245, 158, 11, 0.3); color: var(--warning); }
+
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        /* Stats cards */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: var(--light);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 10px 0;
+            line-height: 1;
+        }
+        
+        .stat-dip .stat-value { color: var(--danger); }
+        .stat-overbought .stat-value { color: var(--warning); }
+        .stat-neutral .stat-value { color: var(--success); }
+        .stat-card h3 {
+            color: var(--secondary);
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        .stat-card p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Table styles */
+        .table-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap; /* Allow controls to wrap */
+        }
+        .table-controls input,
+        .table-controls select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--dark);
+            background-color: var(--card-bg);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .table-controls input:focus,
+        .table-controls select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+            outline: none;
+        }
+        .table-controls button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .table-controls button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.95rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background-color: var(--light);
+            font-weight: 600;
+            color: var(--secondary);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .data-table tbody tr:hover {
+            background-color: rgba(37, 99, 235, 0.05);
+        }
+
+        .symbol {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        /* Signal Badges */
+        .signal-dip,
+        .signal-overbought,
+        .signal-neutral {
+            padding: 5px 12px;
+            border-radius: 50px;
+            font-weight: 600;
+            display: inline-block;
+            font-size: 0.85em;
+            min-width: 100px;
+            text-align: center;
+            white-space: nowrap; /* Prevent wrapping */
+        }
+
+        .signal-dip { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .signal-overbought { background-color: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .signal-neutral { background-color: rgba(16, 185, 129, 0.1); color: var(--success); }
+
+        /* Top 10 Dip Opportunities Section */
+        .top-dips-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg); /* More prominent shadow */
+            padding: 30px;
+            margin-top: 30px;
+            border: 2px solid var(--danger); /* Highlight with danger color */
+            text-align: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .top-dips-section::before {
+            content: "\f0d7"; /* FontAwesome caret-down icon */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3rem;
+            color: var(--danger);
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        .top-dips-section h2 {
+            font-size: 1.8rem;
+            color: var(--danger);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            position: relative;
+            z-index: 1;
+        }
+        .top-dips-section h2 i {
+            color: var(--danger);
+        }
+        .top-dips-section p {
+            font-size: 1.1rem;
+            color: var(--secondary);
+            margin-bottom: 25px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .top-dips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* 3-4 columns */
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .top-dip-card {
+            background: var(--light);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .top-dip-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--shadow-md);
+            border-color: var(--danger);
+        }
+        .top-dip-card::after { /* Overlay for effect */
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0));
+            pointer-events: none;
+        }
+        .top-dip-card h3 {
+            font-size: 1.5rem;
+            color: var(--danger);
+            margin-bottom: 5px;
+        }
+        .top-dip-card .top-dip-name {
+            font-size: 1rem;
+            color: var(--secondary);
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        .top-dip-card .top-dip-price {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+        .top-dip-card .top-dip-rsi {
+            font-size: 1.2rem;
+            color: var(--danger);
+            font-weight: 600;
+        }
+        .top-dip-card .top-dip-change {
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+        .top-dip-card .top-dip-change.positive { color: var(--success); }
+        .top-dip-card .top-dip-change.negative { color: var(--danger); }
+        .top-dip-card .recommendation-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--danger);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Tooltip styles */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        .tooltip-container .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: var(--secondary);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 10px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; /* Position above the text */
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85rem;
+            white-space: normal;
+        }
+        .tooltip-container .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--secondary) transparent transparent transparent;
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+
+        /* Loader and Error States */
+        .loader, .error-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 50px;
+            text-align: center;
+            height: 100%;
+            flex-grow: 1;
+        }
+        .loader-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(37, 99, 235, 0.2);
+            border-top: 6px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info-text {
+            color: var(--secondary);
+            margin-top: 20px;
+            font-style: italic;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        .error-message {
+            color: var(--danger);
+            font-weight: 500;
+        }
+        .error-message button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            margin-top: 20px;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+        .error-message button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            color: var(--secondary);
+            font-size: 0.9rem;
+            margin-top: 40px;
+            border-top: 1px solid var(--border);
+            opacity: 0.8;
+        }
+        footer p {
+            margin-bottom: 5px;
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .dashboard-grid, .top-dips-grid {
+                grid-template-columns: 1fr;
+            }
+            .top-dips-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Maintain more than 1 column if space allows */
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+                padding: 15px 20px;
+            }
+            header h1 {
+                font-size: 1.8rem;
+            }
+            header p {
+                font-size: 1rem;
+            }
+            .date-display {
+                align-self: center;
+            }
+            .card {
+                padding: 20px;
+            }
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .card-header h2 {
+                font-size: 1.2rem;
+            }
+            .legend {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .legend span {
+                margin: 5px;
+            }
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+            .table-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .table-controls input, .table-controls select, .table-controls button {
+                width: 100%;
+            }
+            .data-table th,
+            .data-table td {
+                padding: 12px;
+                font-size: 0.85rem;
+            }
+            .top-dips-section {
+                padding: 20px;
+            }
+            .top-dips-section h2 {
+                font-size: 1.5rem;
+            }
+            .top-dip-card h3 {
+                font-size: 1.3rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dashboard-grid {
+                gap: 15px;
+            }
+            .card {
+                padding: 15px;
+            }
+            .stat-card {
+                padding: 15px;
+            }
+            .stat-value {
+                font-size: 1.8rem;
+            }
+            .top-dips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1><i class="fas fa-chart-line"></i> ETF Market Dashboard</h1>
+                <p>Real-time analysis of Exchange Traded Funds with <span class="tooltip-container">RSI indicators<span class="tooltip-text">Relative Strength Index (RSI) is a momentum indicator used in technical analysis that measures the speed and change of price movements. RSI values of 30 or below typically indicate oversold conditions (potential 'dip opportunities'), while values of 70 or above indicate overbought conditions.</span></span> and key market metrics.</p>
+            </div>
+            <div class="date-display" aria-live="polite">
+                <i class="fas fa-calendar-alt"></i>
+                <span id="current-date">Loading date...</span>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <div class="dashboard-grid" id="dashboard-content" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-chart-pie"></i> Market Overview</h2>
+                    </div>
+                    <div class="stats-container">
+                        <div class="stat-card stat-dip">
+                            <h3>Dip Opportunities</h3>
+                            <div class="stat-value" id="dip-opportunities" aria-live="polite">0</div>
+                            <p>RSI < 30</p>
+                        </div>
+                        <div class="stat-card stat-overbought">
+                            <h3>Overbought ETFs</h3>
+                            <div class="stat-value" id="overbought-etfs" aria-live="polite">0</div>
+                            <p>RSI > 70</p>
+                        </div>
+                        <div class="stat-card stat-neutral">
+                            <h3>Neutral ETFs</h3>
+                            <div class="stat-value" id="neutral-etfs" aria-live="polite">0</div>
+                            <p>30 &le; RSI &le; 70</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total ETFs</h3>
+                            <div class="stat-value" id="total-etfs" aria-live="polite">0</div>
+                            <p>Tracked</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-chart-bar"></i> ETF Prices & RSI Indicators</h2>
+                        <div class="legend" aria-label="RSI Signal Legend">
+                            <span class="legend-oversold">
+                                <i class="fas fa-circle" style="color: var(--danger);"></i> RSI < 30
+                            </span>
+                            <span class="legend-neutral">
+                                <i class="fas fa-circle" style="color: var(--success);"></i> 30 ≤ RSI ≤ 70
+                            </span>
+                            <span class="legend-overbought">
+                                <i class="fas fa-circle" style="color: var(--warning);"></i> RSI > 70
+                            </span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="etf-chart" role="img" aria-label="Bar chart showing ETF last prices and RSI signals"></canvas>
+                    </div>
+                    <p class="info-text">Hover over bars for detailed ETF information, colored by RSI signal.</p>
+                </div>
+            </div>
+
+            <div class="top-dips-section" id="top-dips-section" style="display: none;">
+                <h2><i class="fas fa-arrow-alt-circle-down"></i> Top 10 Dip Opportunities</h2>
+                <p>These ETFs are currently showing strong oversold signals (RSI < 30), potentially indicating attractive entry points. Sorted by lowest RSI.</p>
+                <div class="top-dips-grid" id="top-dips-grid">
+                    </div>
+            </div>
+            
+            <div class="card" style="margin-top: 30px;">
+                <div class="card-header">
+                    <h2><i class="fas fa-table"></i> Comprehensive ETF Performance Data</h2>
+                    <div class="table-controls">
+                        <label for="search-etf" class="sr-only">Search ETF by Symbol or Name:</label>
+                        <input type="text" id="search-etf" placeholder="Search ETF symbol or name..." aria-label="Search ETF by symbol or name">
+
+                        <label for="filter-signal" class="sr-only">Filter by Signal:</label>
+                        <select id="filter-signal" aria-controls="etf-table-body">
+                            <option value="all">All Signals</option>
+                            <option value="Dip Opportunity">Dip Opportunity</option>
+                            <option value="Overbought">Overbought</option>
+                            <option value="Neutral">Neutral</option>
+                        </select>
+
+                        <label for="sort-by" class="sr-only">Sort table by:</label>
+                        <select id="sort-by" aria-controls="etf-table-body">
+                            <option value="symbol">Symbol</option>
+                            <option value="name">ETF Name</option>
+                            <option value="lastPrice">Price</option>
+                            <option value="changePercent" selected>Change %</option>
+                            <option value="rsi">RSI</option>
+                        </select>
+                        <label for="sort-order" class="sr-only">Sort order:</label>
+                        <select id="sort-order" aria-controls="etf-table-body">
+                            <option value="asc">Ascending</option>
+                            <option value="desc" selected>Descending</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" role="grid" aria-live="polite" aria-atomic="true">
+                        <thead>
+                            <tr>
+                                <th scope="col" data-sort="symbol">Symbol</th>
+                                <th scope="col" data-sort="name">ETF Name</th>
+                                <th scope="col" data-sort="lastPrice">Price (₹)</th>
+                                <th scope="col" data-sort="changePercent">Change %</th>
+                                <th scope="col" data-sort="rsi">RSI</th>
+                                <th scope="col" data-sort="signal">Signal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="etf-table-body">
+                            <tr><td colspan="6" style="text-align: center;">Loading ETF data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="loader" id="loader">
+                <div class="loader-spinner" role="status" aria-label="Loading ETF data"></div>
+                <p>Fetching today's ETF data...</p>
+                <p class="info-text">Please wait, this might take a moment.</p>
+            </div>
+
+            <div class="error-message" id="error-message" style="display: none;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                <h3>Error Loading Data</h3>
+                <p id="error-details">Failed to load ETF data. Please check your internet connection or try again later.</p>
+                <button onclick="location.reload()" aria-label="Reload dashboard to try again">
+                    <i class="fas fa-sync-alt"></i> Reload Dashboard
+                </button>
+            </div>
+        </main>
+        
+        <footer>
+            <p>ETF Market Dashboard • Data updates daily • <i class="fas fa-sync-alt"></i> Auto-refresh enabled</p>
+            <p>Note: RSI values are calculated based on historical price movements and are for informational purposes only. Not financial advice.</p>
+            <p>&copy; 2025 ETF Insights. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Constants for RSI thresholds
+        const RSI_OVERSOLD = 30;
+        const RSI_OVERBOUGHT = 70;
+        const API_BASE_URL = 'data'; // Base path for JSON data (e.g., 'data/2025-07-21.json')
+        const TOP_DIP_COUNT = 10; // Number of top dip opportunities to display
+
+        // DOM Element References (using a more concise object for clarity)
+        const DOM = {
+            loader: document.getElementById('loader'),
+            errorMessage: document.getElementById('error-message'),
+            errorDetails: document.getElementById('error-details'),
+            currentDate: document.getElementById('current-date'),
+            dashboardContent: document.getElementById('dashboard-content'),
+            marketOverviewCard: document.getElementById('market-overview-card'),
+            dipOpportunities: document.getElementById('dip-opportunities'),
+            overboughtEtfs: document.getElementById('overbought-etfs'),
+            neutralEtfs: document.getElementById('neutral-etfs'),
+            totalEtfs: document.getElementById('total-etfs'),
+            etfTableBody: document.getElementById('etf-table-body'),
+            etfChartCanvas: document.getElementById('etf-chart'),
+            sortBySelect: document.getElementById('sort-by'),
+            sortOrderSelect: document.getElementById('sort-order'),
+            searchEtfInput: document.getElementById('search-etf'),
+            filterSignalSelect: document.getElementById('filter-signal'),
+            topDipsSection: document.getElementById('top-dips-section'),
+            topDipsGrid: document.getElementById('top-dips-grid')
+        };
+
+        let etfChartInstance = null; // To hold the Chart.js instance for updates
+        let allETFData = []; // Store the fetched and processed data globally
+        let displayedETFData = []; // Data currently displayed in the table (after search/filter)
+
+
+        /**
+         * Utility Functions
+         */
+
+        /**
+         * Gets today's date in YYYY-MM-DD format.
+         * @returns {string} Formatted date string.
+         */
+        function getFormattedDate() {
+            const today = new Date();
+            // Using toISOString().split('T')[0] ensures YYYY-MM-DD format regardless of locale
+            return today.toISOString().split('T')[0];
+        }
+
+        /**
+         * Formats a date string for display.
+         * @param {string} dateStr - Date string (e.g., YYYY-MM-DD).
+         * @returns {string} Localized long date string.
+         */
+        function formatDisplayDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        /**
+         * Formats a number as Indian Rupee currency.
+         * @param {number} value - The numeric value to format.
+         * @returns {string} Formatted currency string.
+         */
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+
+        /**
+         * Formats a number as a percentage.
+         * @param {number} value - The numeric value to format.
+         * @returns {string} Formatted percentage string.
+         */
+        function formatPercentage(value) {
+            return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+        }
+
+        /**
+         * Simulate RSI calculation. In a real application, this would involve a more complex
+         * calculation based on historical price data (e.g., 14-period RSI).
+         * For demo purposes, it generates a plausible random value.
+         * @returns {number} A random RSI value between 0 and 100.
+         */
+        function calculateRSI() {
+            // Bias towards oversold/overbought for demo
+            const rand = Math.random();
+            if (rand < 0.2) return parseFloat((Math.random() * 25 + 5).toFixed(2)); // 5-30 (oversold)
+            if (rand > 0.8) return parseFloat((Math.random() * 25 + 70).toFixed(2)); // 70-95 (overbought)
+            return parseFloat((Math.random() * 40 + 30).toFixed(2)); // 30-70 (neutral)
+        }
+
+        /**
+         * Data Processing Functions
+         */
+
+        /**
+         * Processes raw ETF data to calculate RSI and determine signals.
+         * @param {Array<Object>} rawData - Array of raw ETF data objects.
+         * @returns {Array<Object>} Processed ETF data with added RSI and signal.
+         */
+        function processETFData(rawData) {
+            return rawData.map(etf => {
+                const lastPrice = parseFloat(etf.ltP);
+                const change = parseFloat(etf.chn);
+                const changePercent = parseFloat(etf.per);
+                const rsi = calculateRSI(); // Simulated RSI
+
+                let signal = 'Neutral';
+                if (rsi < RSI_OVERSOLD) {
+                    signal = 'Dip Opportunity';
+                } else if (rsi > RSI_OVERBOUGHT) {
+                    signal = 'Overbought';
+                }
+
+                return {
+                    symbol: etf.symbol,
+                    name: etf.meta?.companyName || `ETF Fund ${etf.symbol}`, // Fallback name
+                    lastPrice,
+                    change,
+                    changePercent,
+                    rsi,
+                    signal
+                };
+            });
+        }
+
+        /**
+         * Filtering and Sorting Functions
+         */
+
+        /**
+         * Filters ETF data based on search query and signal.
+         * @param {Array<Object>} data - The full ETF data array.
+         * @param {string} searchQuery - Text to search in symbol/name.
+         * @param {string} signalFilter - Signal type to filter by ('all', 'Dip Opportunity', etc.).
+         * @returns {Array<Object>} Filtered data.
+         */
+        function filterETFData(data, searchQuery, signalFilter) {
+            let filtered = data;
+
+            if (searchQuery) {
+                const lowerCaseQuery = searchQuery.toLowerCase();
+                filtered = filtered.filter(etf =>
+                    etf.symbol.toLowerCase().includes(lowerCaseQuery) ||
+                    etf.name.toLowerCase().includes(lowerCaseQuery)
+                );
+            }
+
+            if (signalFilter !== 'all') {
+                filtered = filtered.filter(etf => etf.signal === signalFilter);
+            }
+            return filtered;
+        }
+
+        /**
+         * Sorts the ETF data based on a given key and order.
+         * @param {Array<Object>} data - The array of ETF data to sort.
+         * @param {string} key - The property key to sort by.
+         * @param {string} order - 'asc' for ascending, 'desc' for descending.
+         * @returns {Array<Object>} The sorted array.
+         */
+        function sortETFData(data, key, order) {
+            return [...data].sort((a, b) => {
+                let valA = a[key];
+                let valB = b[key];
+
+                // Handle string comparisons (case-insensitive for names/symbols)
+                if (typeof valA === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+
+                if (valA < valB) return order === 'asc' ? -1 : 1;
+                if (valA > valB) return order === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        /**
+         * Rendering Functions
+         */
+
+        /**
+         * Renders the ETF data table.
+         * @param {Array<Object>} data - Processed ETF data to display.
+         */
+        function renderTable(data) {
+            DOM.etfTableBody.innerHTML = ''; // Clear previous rows
+
+            if (data.length === 0) {
+                DOM.etfTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No ETFs match your criteria.</td></tr>';
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            data.forEach(etf => {
+                const row = document.createElement('tr');
+                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
+                const signalClass = `signal-${etf.signal.toLowerCase().replace(' ', '-')}`;
+
+                row.innerHTML = `
+                    <td class="symbol">${etf.symbol}</td>
+                    <td>${etf.name}</td>
+                    <td>${formatCurrency(etf.lastPrice)}</td>
+                    <td class="${changeClass}">${formatPercentage(etf.changePercent)}</td>
+                    <td>${etf.rsi.toFixed(2)}</td>
+                    <td><span class="${signalClass}">${etf.signal}</span></td>
+                `;
+                fragment.appendChild(row);
+            });
+            DOM.etfTableBody.appendChild(fragment);
+        }
+
+        /**
+         * Renders or updates the ETF prices and RSI chart.
+         * @param {Array<Object>} data - Processed ETF data.
+         */
+        function renderChart(data) {
+            const symbols = data.map(etf => etf.symbol);
+            const prices = data.map(etf => etf.lastPrice);
+            const rsiValues = data.map(etf => etf.rsi);
+
+            const backgroundColors = rsiValues.map(rsi => {
+                if (rsi < RSI_OVERSOLD) return 'rgba(239, 68, 68, 0.7)'; // Danger (Red)
+                if (rsi > RSI_OVERBOUGHT) return 'rgba(245, 158, 11, 0.7)'; // Warning (Orange)
+                return 'rgba(16, 185, 129, 0.7)'; // Success (Green)
+            });
+
+            const borderColors = backgroundColors.map(color => color.replace('0.7', '1'));
+
+            const chartData = {
+                labels: symbols,
+                datasets: [{
+                    label: 'Last Price (₹)',
+                    data: prices,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    hoverBackgroundColor: backgroundColors.map(color => color.replace('0.7', '0.9'))
+                }]
+            };
+
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const etf = data[context.dataIndex];
+                                return [
+                                    `ETF: ${etf.name}`,
+                                    `Price: ${formatCurrency(etf.lastPrice)}`,
+                                    `Change: ${formatPercentage(etf.changePercent)}`,
+                                    `RSI: ${etf.rsi.toFixed(2)}`,
+                                    `Signal: ${etf.signal}`
+                                ];
+                            }
+                        },
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 12 },
+                        padding: 10,
+                        boxPadding: 4,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Price (₹)',
+                            color: var_from_css('--secondary')
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            },
+                            color: var_from_css('--dark')
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: var_from_css('--dark')
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                }
+            };
+
+            if (etfChartInstance) {
+                etfChartInstance.data = chartData;
+                etfChartInstance.options = chartOptions;
+                etfChartInstance.update();
+            } else {
+                etfChartInstance = new Chart(DOM.etfChartCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: chartData,
+                    options: chartOptions
+                });
+            }
+        }
+
+        /**
+         * Updates the numerical statistics cards.
+         * @param {Array<Object>} data - Processed ETF data.
+         */
+        function updateStats(data) {
+            const dipCount = data.filter(etf => etf.signal === 'Dip Opportunity').length;
+            const overboughtCount = data.filter(etf => etf.signal === 'Overbought').length;
+            const neutralCount = data.filter(etf => etf.signal === 'Neutral').length;
+
+            DOM.totalEtfs.textContent = data.length;
+            DOM.dipOpportunities.textContent = dipCount;
+            DOM.overboughtEtfs.textContent = overboughtCount;
+            DOM.neutralEtfs.textContent = neutralCount;
+        }
+
+        /**
+         * Renders the top 10 dip opportunities section.
+         * Strategy: Select ETFs with RSI < 30, then sort by lowest RSI first.
+         * @param {Array<Object>} data - Full processed ETF data.
+         */
+        function renderTopDipOpportunities(data) {
+            const dipEtfs = data.filter(etf => etf.signal === 'Dip Opportunity');
+            const sortedDips = sortETFData(dipEtfs, 'rsi', 'asc'); // Sort by lowest RSI first
+
+            DOM.topDipsGrid.innerHTML = ''; // Clear previous cards
+
+            if (sortedDips.length === 0) {
+                DOM.topDipsSection.style.display = 'none';
+                return;
+            }
+
+            DOM.topDipsSection.style.display = 'block'; // Show section if there are dips
+
+            const fragment = document.createDocumentFragment();
+            sortedDips.slice(0, TOP_DIP_COUNT).forEach((etf, index) => {
+                const card = document.createElement('div');
+                card.classList.add('top-dip-card');
+                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
+
+                card.innerHTML = `
+                    <div class="recommendation-badge">
+                        <i class="fas fa-star"></i> Top ${index + 1}
+                    </div>
+                    <h3>${etf.symbol}</h3>
+                    <p class="top-dip-name">${etf.name}</p>
+                    <div class="top-dip-price">${formatCurrency(etf.lastPrice)}</div>
+                    <div class="top-dip-change ${changeClass}">${formatPercentage(etf.changePercent)}</div>
+                    <div class="top-dip-rsi">RSI: ${etf.rsi.toFixed(2)}</div>
+                `;
+                fragment.appendChild(card);
+            });
+            DOM.topDipsGrid.appendChild(fragment);
+        }
+
+
+        /**
+         * Main Data Fetching and Dashboard Update Logic
+         */
+
+        /**
+         * Fetches ETF data from a (simulated) API endpoint.
+         * @returns {Promise<Array<Object>>} A promise that resolves with the raw ETF data.
+         */
+        async function fetchETFData() {
+            const today = getFormattedDate();
+            // In a real application, this would be an actual API endpoint like:
+            // const response = await fetch(`/api/etf-data?date=${today}`);
+            // For this demo, we use a local JSON file or simulated data.
+
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1200));
+
+            try {
+                // Try fetching from a local file first (if running on a server)
+                const response = await fetch(`${API_BASE_URL}/${today}.json`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data.data; // Assuming the actual ETF data is in a 'data' property
+            } catch (fileError) {
+                console.warn(`Could not load local file ${API_BASE_URL}/${today}.json. Simulating data.`, fileError);
+                // Fallback to simulated data if local file fails (e.g., running directly from HTML)
+                return generateSimulatedData(30); // Generate more data for a richer dashboard
+            }
+        }
+
+        /**
+         * Generates simulated ETF data for demonstration.
+         * @param {number} count - Number of simulated ETFs to generate.
+         * @returns {Array<Object>} Array of simulated ETF data objects.
+         */
+        function generateSimulatedData(count = 25) {
+            const etfNames = [
+                'Tech Innovators ETF', 'Global Healthcare ETF', 'Emerging Markets ETF',
+                'Sustainable Energy ETF', 'Financial Titans ETF', 'Consumer Staples ETF',
+                'Real Estate Opportunities', 'Small Cap Growth', 'Bond Market Blend',
+                'Gold & Precious Metals', 'Cybersecurity Leaders', 'Robotics & AI',
+                'Water Infrastructure', 'Clean Transportation', 'Cloud Computing',
+                'AI & Machine Learning ETF', 'Green Energy Futures', 'Global Robotics & Automation',
+                'Digital Transformation Fund', 'Biotechnology Innovators', 'E-commerce Giants',
+                'Semiconductor Index Fund', 'Precious Metals & Mining', 'Indian Consumption Fund',
+                'Infrastructure Development ETF', 'Electric Vehicle Ecosystem', 'Gaming & Esports',
+                'Space Exploration ETF', 'Agri-Tech Solutions', 'Smart City Development'
+            ];
+            
+            return Array.from({ length: count }, (_, i) => {
+                const basePrice = parseFloat((Math.random() * 200 + 50).toFixed(2));
+                const change = parseFloat((Math.random() * 15 - 7.5).toFixed(2));
+                const changePercent = parseFloat(((change / basePrice) * 100).toFixed(2));
+
+                return {
+                    "symbol": `ETF${100 + i}`,
+                    "ltP": parseFloat((basePrice + change).toFixed(2)),
+                    "chn": change,
+                    "per": changePercent,
+                    "meta": {
+                        "companyName": etfNames[i % etfNames.length]
+                    }
+                };
+            });
+        }
+
+        /**
+         * Applies current search, filter, and sort settings to the data and renders the table.
+         */
+        function applyTableFiltersAndSort() {
+            const searchQuery = DOM.searchEtfInput.value.trim();
+            const signalFilter = DOM.filterSignalSelect.value;
+            const sortBy = DOM.sortBySelect.value;
+            const sortOrder = DOM.sortOrderSelect.value;
+
+            let filteredData = filterETFData(allETFData, searchQuery, signalFilter);
+            displayedETFData = sortETFData(filteredData, sortBy, sortOrder);
+            renderTable(displayedETFData);
+        }
+        async function initDashboard() {
+            // Display loader, hide content and error
+            DOM.loader.style.display = 'flex';
+            DOM.dashboardContent.style.display = 'none';
+            DOM.topDipsSection.style.display = 'none'; // Hide initially
+            DOM.errorMessage.style.display = 'none';
+
+            try {
+                // Set current date immediately
+                DOM.currentDate.textContent = formatDisplayDate(getFormattedDate());
+
+                const rawEtfs = await fetchETFData();
+                allETFData = processETFData(rawEtfs);
+
+                // Update all dashboard components
+                updateStats(allETFData);
+                renderChart(allETFData);
+                renderTopDipOpportunities(allETFData); // Render top dips first
+
+                // Apply initial filters/sort for the main table
+                applyTableFiltersAndSort();
+
+                // Show content, hide loader
+                DOM.dashboardContent.style.display = 'grid';
+                DOM.loader.style.display = 'none';
+
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                DOM.loader.style.display = 'none';
+                DOM.dashboardContent.style.display = 'none';
+                DOM.topDipsSection.style.display = 'none';
+                DOM.errorMessage.style.display = 'flex';
+                DOM.errorDetails.textContent = `Error: ${error.message || 'An unknown error occurred while loading data.'}`;
+            }
+        }
+
+        /**
+         * Event Listeners
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            initDashboard();
+
+            // Event listeners for table controls
+            DOM.searchEtfInput.addEventListener('input', applyTableFiltersAndSort);
+            DOM.filterSignalSelect.addEventListener('change', applyTableFiltersAndSort);
+            DOM.sortBySelect.addEventListener('change', applyTableFiltersAndSort);
+            DOM.sortOrderSelect.addEventListener('change', applyTableFiltersAndSort);
+        });
+
+        /**
+         * Helper to get CSS variable values in JS
+         */
+        function var_from_css(varName) {
+            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        }
+
+    </script>
+</body>
+</html>
