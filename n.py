@@ -1,7 +1,10 @@
 from nsepython import *
 import json
 from datetime import date
+import os
+
 today_str = date.today().isoformat()
+os.makedirs("data", exist_ok=True)
 filename = f"data/{today_str}.json"
 positions = nsefetch('https://www.nseindia.com/api/etf')
 try:
