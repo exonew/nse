@@ -827,26 +827,13 @@
         let allETFData = []; // Store the fetched and processed data globally
         let displayedETFData = []; // Data currently displayed in the table (after search/filter)
 
-
         /**
          * Utility Functions
          */
-
-        /**
-         * Gets today's date in YYYY-MM-DD format.
-         * @returns {string} Formatted date string.
-         */
         function getFormattedDate() {
             const today = new Date();
-            // Using toISOString().split('T')[0] ensures YYYY-MM-DD format regardless of locale
             return today.toISOString().split('T')[0];
         }
-
-        /**
-         * Formats a date string for display.
-         * @param {string} dateStr - Date string (e.g., YYYY-MM-DD).
-         * @returns {string} Localized long date string.
-         */
         function formatDisplayDate(dateStr) {
             const date = new Date(dateStr);
             return date.toLocaleDateString('en-US', {
@@ -856,12 +843,6 @@
                 day: 'numeric'
             });
         }
-
-        /**
-         * Formats a number as Indian Rupee currency.
-         * @param {number} value - The numeric value to format.
-         * @returns {string} Formatted currency string.
-         */
         function formatCurrency(value) {
             return new Intl.NumberFormat('en-IN', {
                 style: 'currency',
@@ -870,22 +851,9 @@
                 maximumFractionDigits: 2
             }).format(value);
         }
-
-        /**
-         * Formats a number as a percentage.
-         * @param {number} value - The numeric value to format.
-         * @returns {string} Formatted percentage string.
-         */
         function formatPercentage(value) {
             return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
         }
-
-        /**
-         * Simulate RSI calculation. In a real application, this would involve a more complex
-         * calculation based on historical price data (e.g., 14-period RSI).
-         * For demo purposes, it generates a plausible random value.
-         * @returns {number} A random RSI value between 0 and 100.
-         */
         function calculateRSI() {
             // Bias towards oversold/overbought for demo
             const rand = Math.random();
@@ -896,12 +864,6 @@
 
         /**
          * Data Processing Functions
-         */
-
-        /**
-         * Processes raw ETF data to calculate RSI and determine signals.
-         * @param {Array<Object>} rawData - Array of raw ETF data objects.
-         * @returns {Array<Object>} Processed ETF data with added RSI and signal.
          */
         function processETFData(rawData) {
             return rawData.map(etf => {
@@ -919,7 +881,7 @@
 
                 return {
                     symbol: etf.symbol,
-                    name: etf.meta?.companyName || `ETF Fund ${etf.symbol}`, // Fallback name
+                    name: etf.meta?.companyName || `ETF Fund ${etf.symbol}`,
                     lastPrice,
                     change,
                     changePercent,
@@ -930,19 +892,28 @@
         }
 
         /**
-         * Filtering and Sorting Functions
+         * Enhanced Dip Selection Logic
          */
+        function getTopDipOpportunities(data, count = 10) {
+            // 1. Filter: RSI < 30, and not in a strong downtrend (e.g., changePercent > -5%)
+            const dipCandidates = data.filter(etf =>
+                etf.rsi < RSI_OVERSOLD &&
+                etf.changePercent > -5 // Avoid ETFs crashing hard today
+            );
+            // 2. Sort: By RSI ascending, then by changePercent descending (prefer those rebounding)
+            dipCandidates.sort((a, b) => {
+                if (a.rsi !== b.rsi) return a.rsi - b.rsi;
+                return b.changePercent - a.changePercent;
+            });
+            // 3. Return top N
+            return dipCandidates.slice(0, count);
+        }
 
         /**
-         * Filters ETF data based on search query and signal.
-         * @param {Array<Object>} data - The full ETF data array.
-         * @param {string} searchQuery - Text to search in symbol/name.
-         * @param {string} signalFilter - Signal type to filter by ('all', 'Dip Opportunity', etc.).
-         * @returns {Array<Object>} Filtered data.
+         * Filtering and Sorting Functions
          */
         function filterETFData(data, searchQuery, signalFilter) {
             let filtered = data;
-
             if (searchQuery) {
                 const lowerCaseQuery = searchQuery.toLowerCase();
                 filtered = filtered.filter(etf =>
@@ -950,31 +921,19 @@
                     etf.name.toLowerCase().includes(lowerCaseQuery)
                 );
             }
-
             if (signalFilter !== 'all') {
                 filtered = filtered.filter(etf => etf.signal === signalFilter);
             }
             return filtered;
         }
-
-        /**
-         * Sorts the ETF data based on a given key and order.
-         * @param {Array<Object>} data - The array of ETF data to sort.
-         * @param {string} key - The property key to sort by.
-         * @param {string} order - 'asc' for ascending, 'desc' for descending.
-         * @returns {Array<Object>} The sorted array.
-         */
         function sortETFData(data, key, order) {
             return [...data].sort((a, b) => {
                 let valA = a[key];
                 let valB = b[key];
-
-                // Handle string comparisons (case-insensitive for names/symbols)
                 if (typeof valA === 'string') {
                     valA = valA.toLowerCase();
                     valB = valB.toLowerCase();
                 }
-
                 if (valA < valB) return order === 'asc' ? -1 : 1;
                 if (valA > valB) return order === 'asc' ? 1 : -1;
                 return 0;
@@ -984,25 +943,17 @@
         /**
          * Rendering Functions
          */
-
-        /**
-         * Renders the ETF data table.
-         * @param {Array<Object>} data - Processed ETF data to display.
-         */
         function renderTable(data) {
-            DOM.etfTableBody.innerHTML = ''; // Clear previous rows
-
+            DOM.etfTableBody.innerHTML = '';
             if (data.length === 0) {
                 DOM.etfTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No ETFs match your criteria.</td></tr>';
                 return;
             }
-
             const fragment = document.createDocumentFragment();
             data.forEach(etf => {
                 const row = document.createElement('tr');
                 const changeClass = etf.change >= 0 ? 'positive' : 'negative';
                 const signalClass = `signal-${etf.signal.toLowerCase().replace(' ', '-')}`;
-
                 row.innerHTML = `
                     <td class="symbol">${etf.symbol}</td>
                     <td>${etf.name}</td>
@@ -1017,21 +968,26 @@
         }
 
         /**
-         * Renders or updates the ETF prices and RSI chart.
-         * @param {Array<Object>} data - Processed ETF data.
+         * Renders or updates the ETF prices and RSI chart, highlighting top dips.
          */
         function renderChart(data) {
             const symbols = data.map(etf => etf.symbol);
             const prices = data.map(etf => etf.lastPrice);
             const rsiValues = data.map(etf => etf.rsi);
 
-            const backgroundColors = rsiValues.map(rsi => {
-                if (rsi < RSI_OVERSOLD) return 'rgba(239, 68, 68, 0.7)'; // Danger (Red)
-                if (rsi > RSI_OVERBOUGHT) return 'rgba(245, 158, 11, 0.7)'; // Warning (Orange)
-                return 'rgba(16, 185, 129, 0.7)'; // Success (Green)
+            // Highlight top dips with a border
+            const topDipSymbols = new Set(getTopDipOpportunities(data, TOP_DIP_COUNT).map(etf => etf.symbol));
+
+            const backgroundColors = rsiValues.map((rsi, i) => {
+                if (rsi < RSI_OVERSOLD) return 'rgba(239, 68, 68, 0.7)';
+                if (rsi > RSI_OVERBOUGHT) return 'rgba(245, 158, 11, 0.7)';
+                return 'rgba(16, 185, 129, 0.7)';
             });
 
-            const borderColors = backgroundColors.map(color => color.replace('0.7', '1'));
+            const borderColors = symbols.map((sym, i) =>
+                topDipSymbols.has(sym) ? 'rgba(37, 99, 235, 1)' : backgroundColors[i].replace('0.7', '1')
+            );
+            const borderWidths = symbols.map(sym => topDipSymbols.has(sym) ? 4 : 1);
 
             const chartData = {
                 labels: symbols,
@@ -1040,7 +996,7 @@
                     data: prices,
                     backgroundColor: backgroundColors,
                     borderColor: borderColors,
-                    borderWidth: 1,
+                    borderWidth: borderWidths,
                     borderRadius: 6,
                     hoverBackgroundColor: backgroundColors.map(color => color.replace('0.7', '0.9'))
                 }]
@@ -1050,9 +1006,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -1076,9 +1030,7 @@
                 scales: {
                     y: {
                         beginAtZero: false,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
                         title: {
                             display: true,
                             text: 'Price (₹)',
@@ -1092,12 +1044,8 @@
                         }
                     },
                     x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            color: var_from_css('--dark')
-                        }
+                        grid: { display: false },
+                        ticks: { color: var_from_css('--dark') }
                     }
                 },
                 animation: {
@@ -1121,7 +1069,6 @@
 
         /**
          * Updates the numerical statistics cards.
-         * @param {Array<Object>} data - Processed ETF data.
          */
         function updateStats(data) {
             const dipCount = data.filter(etf => etf.signal === 'Dip Opportunity').length;
@@ -1135,82 +1082,62 @@
         }
 
         /**
-         * Renders the top 10 dip opportunities section.
-         * Strategy: Select ETFs with RSI < 30, then sort by lowest RSI first.
-         * @param {Array<Object>} data - Full processed ETF data.
+         * Renders the top 10 dip opportunities section with enhanced info.
          */
         function renderTopDipOpportunities(data) {
-            const dipEtfs = data.filter(etf => etf.signal === 'Dip Opportunity');
-            const sortedDips = sortETFData(dipEtfs, 'rsi', 'asc'); // Sort by lowest RSI first
+            const topDips = getTopDipOpportunities(data, TOP_DIP_COUNT);
 
-            DOM.topDipsGrid.innerHTML = ''; // Clear previous cards
-
-            if (sortedDips.length === 0) {
+            DOM.topDipsGrid.innerHTML = '';
+            if (topDips.length === 0) {
                 DOM.topDipsSection.style.display = 'none';
                 return;
             }
-
-            DOM.topDipsSection.style.display = 'block'; // Show section if there are dips
+            DOM.topDipsSection.style.display = 'block';
 
             const fragment = document.createDocumentFragment();
-            sortedDips.slice(0, TOP_DIP_COUNT).forEach((etf, index) => {
+            topDips.forEach((etf, index) => {
+                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
+                // Buy Signal Strength: Strong if RSI < 20, Good if 20-25, Moderate if 25-30
+                let strength = 'Moderate';
+                if (etf.rsi < 20) strength = 'Strong';
+                else if (etf.rsi < 25) strength = 'Good';
+                else strength = 'Moderate';
+
                 const card = document.createElement('div');
                 card.classList.add('top-dip-card');
-                const changeClass = etf.change >= 0 ? 'positive' : 'negative';
-
                 card.innerHTML = `
-                    <div class="recommendation-badge">
-                        <i class="fas fa-star"></i> Top ${index + 1}
+                    <div class="recommendation-badge" title="Buy Signal Strength: ${strength}">
+                        <i class="fas fa-star${strength === 'Strong' ? '' : '-half-alt'}"></i> Top ${index + 1}
                     </div>
                     <h3>${etf.symbol}</h3>
                     <p class="top-dip-name">${etf.name}</p>
                     <div class="top-dip-price">${formatCurrency(etf.lastPrice)}</div>
                     <div class="top-dip-change ${changeClass}">${formatPercentage(etf.changePercent)}</div>
-                    <div class="top-dip-rsi">RSI: ${etf.rsi.toFixed(2)}</div>
+                    <div class="top-dip-rsi">RSI: ${etf.rsi.toFixed(2)} <span style="font-size:0.9em;color:var(--success);">(${strength})</span></div>
                 `;
                 fragment.appendChild(card);
             });
             DOM.topDipsGrid.appendChild(fragment);
         }
 
-
         /**
          * Main Data Fetching and Dashboard Update Logic
          */
-
-        /**
-         * Fetches ETF data from a (simulated) API endpoint.
-         * @returns {Promise<Array<Object>>} A promise that resolves with the raw ETF data.
-         */
         async function fetchETFData() {
             const today = getFormattedDate();
-            // In a real application, this would be an actual API endpoint like:
-            // const response = await fetch(`/api/etf-data?date=${today}`);
-            // For this demo, we use a local JSON file or simulated data.
-
-            // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 1200));
-
             try {
-                // Try fetching from a local file first (if running on a server)
                 const response = await fetch(`${API_BASE_URL}/${today}.json`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                return data.data; // Assuming the actual ETF data is in a 'data' property
+                return data.data;
             } catch (fileError) {
                 console.warn(`Could not load local file ${API_BASE_URL}/${today}.json. Simulating data.`, fileError);
-                // Fallback to simulated data if local file fails (e.g., running directly from HTML)
-                return generateSimulatedData(30); // Generate more data for a richer dashboard
+                return generateSimulatedData(30);
             }
         }
-
-        /**
-         * Generates simulated ETF data for demonstration.
-         * @param {number} count - Number of simulated ETFs to generate.
-         * @returns {Array<Object>} Array of simulated ETF data objects.
-         */
         function generateSimulatedData(count = 25) {
             const etfNames = [
                 'Tech Innovators ETF', 'Global Healthcare ETF', 'Emerging Markets ETF',
@@ -1224,12 +1151,10 @@
                 'Infrastructure Development ETF', 'Electric Vehicle Ecosystem', 'Gaming & Esports',
                 'Space Exploration ETF', 'Agri-Tech Solutions', 'Smart City Development'
             ];
-            
             return Array.from({ length: count }, (_, i) => {
                 const basePrice = parseFloat((Math.random() * 200 + 50).toFixed(2));
                 const change = parseFloat((Math.random() * 15 - 7.5).toFixed(2));
                 const changePercent = parseFloat(((change / basePrice) * 100).toFixed(2));
-
                 return {
                     "symbol": `ETF${100 + i}`,
                     "ltP": parseFloat((basePrice + change).toFixed(2)),
@@ -1241,46 +1166,30 @@
                 };
             });
         }
-
-        /**
-         * Applies current search, filter, and sort settings to the data and renders the table.
-         */
         function applyTableFiltersAndSort() {
             const searchQuery = DOM.searchEtfInput.value.trim();
             const signalFilter = DOM.filterSignalSelect.value;
             const sortBy = DOM.sortBySelect.value;
             const sortOrder = DOM.sortOrderSelect.value;
-
             let filteredData = filterETFData(allETFData, searchQuery, signalFilter);
             displayedETFData = sortETFData(filteredData, sortBy, sortOrder);
             renderTable(displayedETFData);
         }
         async function initDashboard() {
-            // Display loader, hide content and error
             DOM.loader.style.display = 'flex';
             DOM.dashboardContent.style.display = 'none';
-            DOM.topDipsSection.style.display = 'none'; // Hide initially
+            DOM.topDipsSection.style.display = 'none';
             DOM.errorMessage.style.display = 'none';
-
             try {
-                // Set current date immediately
                 DOM.currentDate.textContent = formatDisplayDate(getFormattedDate());
-
                 const rawEtfs = await fetchETFData();
                 allETFData = processETFData(rawEtfs);
-
-                // Update all dashboard components
                 updateStats(allETFData);
+                renderTopDipOpportunities(allETFData);
                 renderChart(allETFData);
-                renderTopDipOpportunities(allETFData); // Render top dips first
-
-                // Apply initial filters/sort for the main table
                 applyTableFiltersAndSort();
-
-                // Show content, hide loader
                 DOM.dashboardContent.style.display = 'grid';
                 DOM.loader.style.display = 'none';
-
             } catch (error) {
                 console.error('Failed to initialize dashboard:', error);
                 DOM.loader.style.display = 'none';
@@ -1296,8 +1205,6 @@
          */
         document.addEventListener('DOMContentLoaded', () => {
             initDashboard();
-
-            // Event listeners for table controls
             DOM.searchEtfInput.addEventListener('input', applyTableFiltersAndSort);
             DOM.filterSignalSelect.addEventListener('change', applyTableFiltersAndSort);
             DOM.sortBySelect.addEventListener('change', applyTableFiltersAndSort);
@@ -1310,7 +1217,6 @@
         function var_from_css(varName) {
             return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         }
-
     </script>
 </body>
 </html>
