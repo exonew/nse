@@ -11,3 +11,6 @@ try:
     with open(filename, "w+") as f:
         json.dump(positions, f, indent=4)
     print(f"Data saved to {filename}")
+except Exception as e:
+    print(f"Error fetching or saving data: {e}")
+    exit(1)
