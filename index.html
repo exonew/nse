@@ -1,6 +1,6 @@
 <!--
-  ETF Market Dashboard for GitHub Pages
-  -------------------------------------
+  ETF Market Dashboard for GitHub Pages (20x Enhanced)
+  ---------------------------------------------------
   1. Place your ETF data JSON file in a 'data/' folder at the root of your repo.
      Example: data/2024-06-09.json
   2. The dashboard will fetch './data/{YYYY-MM-DD}.json' based on the user's date.
@@ -11,7 +11,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ETF Market Dashboard & Dip Analyzer (Static)</title>
+  <title>ETF Market Dashboard & Dip Analyzer (20x Pro)</title>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <!-- Chart.js Matrix Plugin (for heatmap) -->
@@ -533,9 +533,117 @@
       visibility: visible;
       opacity: 1;
     }
+    .fab {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .fab-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      font-size: 1.6rem;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.18);
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .fab-btn:hover { background: var(--primary-dark); transform: scale(1.08); }
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0; height: 100vh; width: 320px;
+      background: var(--card-bg);
+      box-shadow: 2px 0 16px rgba(30,41,59,0.08);
+      z-index: 1002;
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(.4,2,.6,1);
+      display: flex; flex-direction: column;
+      padding: 32px 18px 18px 18px;
+    }
+    .sidebar.active { transform: translateX(0); }
+    .sidebar-close {
+      position: absolute; top: 18px; right: 18px;
+      background: var(--danger); color: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 1.2rem; cursor: pointer;
+    }
+    .sidebar h2 { font-size: 1.2rem; margin-bottom: 18px; }
+    .sidebar .filter-group { margin-bottom: 24px; }
+    .carousel {
+      display: flex; gap: 18px; overflow-x: auto; padding: 12px 0 18px 0; scroll-behavior: smooth;
+    }
+    .carousel-card {
+      min-width: 260px; background: var(--light); border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 18px 14px; transition: box-shadow 0.2s, transform 0.2s; cursor: pointer; position: relative;
+      display: flex; flex-direction: column; align-items: flex-start;
+      animation: fadeInUp 0.7s;
+    }
+    .carousel-card:hover { box-shadow: 0 8px 24px rgba(37,99,235,0.13); transform: translateY(-4px) scale(1.03); }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px);} to { opacity: 1; transform: none; } }
+    .notif-center {
+      position: fixed; top: 24px; right: 24px; z-index: 1003; min-width: 320px; max-width: 90vw;
+    }
+    .notif {
+      background: var(--card-bg); color: var(--primary-dark); border-left: 5px solid var(--primary); border-radius: 8px; box-shadow: 0 2px 12px rgba(30,41,59,0.08); padding: 14px 18px; margin-bottom: 12px; font-size: 1.01rem; display: flex; align-items: center; gap: 10px; animation: fadeIn 0.5s;
+    }
+    .notif.notif-error { border-color: var(--danger); color: var(--danger); }
+    .notif.notif-success { border-color: var(--success); color: var(--success); }
+    .notif.notif-warning { border-color: var(--warning); color: var(--warning); }
+    .notif .notif-close { margin-left: auto; background: none; border: none; color: inherit; font-size: 1.2rem; cursor: pointer; }
   </style>
 </head>
 <body>
+  <!-- Animated Landing Header -->
+  <div id="landing-header" style="background:linear-gradient(120deg,#2563eb 60%,#10b981 100%);color:#fff;padding:48px 0 32px 0;text-align:center;box-shadow:0 8px 32px rgba(37,99,235,0.13);">
+    <h1 style="font-size:2.8rem;font-weight:800;letter-spacing:-1px;">ETF Market Dashboard <span style="font-size:1.2rem;font-weight:400;opacity:0.8;">(20x Pro)</span></h1>
+    <div id="market-summary" style="margin:18px auto 0 auto;font-size:1.25rem;max-width:700px;opacity:0.95;">Loading market summary...</div>
+  </div>
+  <!-- Floating Action Buttons -->
+  <div class="fab" id="fab">
+    <button class="fab-btn" id="fab-theme" title="Toggle dark/light mode"><i class="fas fa-moon"></i></button>
+    <button class="fab-btn" id="fab-help" title="Help & Glossary"><i class="fas fa-question"></i></button>
+    <button class="fab-btn" id="fab-sidebar" title="Open Filters"><i class="fas fa-sliders-h"></i></button>
+  </div>
+  <!-- Collapsible Sidebar -->
+  <aside class="sidebar" id="sidebar" aria-label="Sidebar filters and quick links">
+    <button class="sidebar-close" id="sidebar-close" aria-label="Close sidebar"><i class="fas fa-times"></i></button>
+    <h2>Quick Filters</h2>
+    <div class="filter-group">
+      <label for="sidebar-signal">Signal:</label>
+      <select id="sidebar-signal">
+        <option value="all">All</option>
+        <option value="Buy">Buy</option>
+        <option value="Sell">Sell</option>
+        <option value="Hold">Hold</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="sidebar-search">Search:</label>
+      <input type="text" id="sidebar-search" placeholder="ETF symbol or name...">
+    </div>
+    <div class="filter-group">
+      <button id="sidebar-reset" style="width:100%;background:var(--danger);color:#fff;">Reset Filters</button>
+    </div>
+    <hr style="margin:18px 0;">
+    <div>
+      <a href="#" id="open-settings" style="color:var(--primary);font-weight:600;">⚙️ Settings</a> &nbsp;|&nbsp;
+      <a href="#" id="open-help" style="color:var(--primary);font-weight:600;">❓ Help</a>
+    </div>
+  </aside>
+  <!-- Notification Center -->
+  <div class="notif-center" id="notif-center" aria-live="polite"></div>
+  <!-- Top Opportunities Carousel -->
+  <div style="max-width:1400px;margin:0 auto;padding:24px 0 0 0;">
+    <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:8px;">Top Opportunities <span style="font-size:1rem;font-weight:400;opacity:0.7;">(Buy signals, sorted by RSI)</span></h2>
+    <div class="carousel" id="top-carousel"></div>
+  </div>
+  <!-- Main Dashboard Container -->
   <div class="container">
     <header>
       <div class="header-content">
@@ -693,13 +801,64 @@
       <p>&copy; 2025 ETF Insights. All rights reserved.</p>
     </footer>
   </div>
+  <!-- Settings Modal -->
+  <div class="modal" id="settings-modal" tabindex="-1" aria-modal="true" aria-labelledby="settings-title" style="display:none;">
+    <div class="modal-content">
+      <button class="modal-close" id="settings-close" aria-label="Close settings"><i class="fas fa-times"></i></button>
+      <div class="modal-header"><h3 id="settings-title">Settings</h3></div>
+      <div class="modal-body">
+        <label>Theme:
+          <select id="settings-theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="auto">Auto</option>
+          </select>
+        </label>
+        <br><br>
+        <label>Default Timeframe:
+          <select id="settings-tf">
+            <option value="1D">1D</option>
+            <option value="1W">1W</option>
+            <option value="1M">1M</option>
+            <option value="3M">3M</option>
+            <option value="1Y">1Y</option>
+            <option value="ALL">All</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+  <!-- Help Modal -->
+  <div class="modal" id="help-modal" tabindex="-1" aria-modal="true" aria-labelledby="help-title" style="display:none;">
+    <div class="modal-content">
+      <button class="modal-close" id="help-close" aria-label="Close help"><i class="fas fa-times"></i></button>
+      <div class="modal-header"><h3 id="help-title">Help & Glossary</h3></div>
+      <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+        <b>RSI:</b> Relative Strength Index, <b>MACD:</b> Moving Average Convergence Divergence, <b>Bollinger Bands:</b> Volatility bands, <b>SMA/EMA:</b> Simple/Exponential Moving Average, <b>VWAP:</b> Volume Weighted Average Price.<br><br>
+        <ul>
+          <li><b>Buy Signal:</b> RSI < 30 & MACD > 0</li>
+          <li><b>Sell Signal:</b> RSI > 70 & MACD < 0</li>
+          <li><b>Hold Signal:</b> Otherwise</li>
+        </ul>
+        <p>Click any ETF row or heatmap cell for details and strategy tips. Use the sidebar for advanced filtering. All data is loaded from static JSON for GitHub Pages compatibility.</p>
+      </div>
+    </div>
+  </div>
   <script>
-  // --- Chart.js Matrix Registration for Static Hosting ---
-  // This is required for Chart.js v4+ and the matrix plugin to work on static hosts like GitHub Pages.
-  Chart.register(
-    window.ChartMatrix.MatrixController,
-    window.ChartMatrix.MatrixElement
-  );
+  // --- Chart.js Matrix Registration for Static Hosting (robust for all CDN builds) ---
+  if (window.chartjsChartMatrix) {
+    Chart.register(
+      window.chartjsChartMatrix.MatrixController,
+      window.chartjsChartMatrix.MatrixElement
+    );
+  } else if (window.ChartMatrix) {
+    Chart.register(
+      window.ChartMatrix.MatrixController,
+      window.ChartMatrix.MatrixElement
+    );
+  } else {
+    console.error('Chart.js Matrix plugin not loaded. Heatmap will not work.');
+  }
 
   // --- Constants ---
   const RSI_OVERSOLD = 30;
@@ -736,7 +895,25 @@
     modalBody: document.getElementById('modal-body'),
     themeToggleBtn: document.getElementById('theme-toggle-btn'),
     alertBar: document.getElementById('alert-bar'),
-    timeframeBtns: null // will be set after DOMContentLoaded
+    timeframeBtns: null, // will be set after DOMContentLoaded
+    fabThemeBtn: document.getElementById('fab-theme'),
+    fabHelpBtn: document.getElementById('fab-help'),
+    fabSidebarBtn: document.getElementById('fab-sidebar'),
+    sidebar: document.getElementById('sidebar'),
+    sidebarCloseBtn: document.getElementById('sidebar-close'),
+    sidebarSignalSelect: document.getElementById('sidebar-signal'),
+    sidebarSearchInput: document.getElementById('sidebar-search'),
+    sidebarResetBtn: document.getElementById('sidebar-reset'),
+    openSettingsLink: document.getElementById('open-settings'),
+    openHelpLink: document.getElementById('open-help'),
+    settingsModal: document.getElementById('settings-modal'),
+    settingsCloseBtn: document.getElementById('settings-close'),
+    settingsThemeSelect: document.getElementById('settings-theme'),
+    settingsTfSelect: document.getElementById('settings-tf'),
+    helpModal: document.getElementById('help-modal'),
+    helpCloseBtn: document.getElementById('help-close'),
+    notifCenter: document.getElementById('notif-center'),
+    topCarousel: document.getElementById('top-carousel')
   };
   let etfChartInstance = null, rsiHeatmapInstance = null, signalPieInstance = null;
   let allETFData = [], displayedETFData = [], dataRefreshTimer = null;
